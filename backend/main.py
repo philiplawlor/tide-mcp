@@ -115,11 +115,32 @@ def stations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int
     return {"stations": stations[:limit]}
 
 @app.get("/tide/today")
-def tide_today(date: str = Query(None), station: str = Query(None)):
+def tide_today(
+    date: str = Query(None),
+    station: str = Query(None),
+    lat: float = Query(None),
+    lon: float = Query(None),
+    town: str = Query(None),
+    state: str = Query(None)
+):
     if date is None:
         date = datetime.date.today().strftime("%Y-%m-%d")
+    estimated = False
+    used_station = station
+    # If no station provided, but lat/lon provided, find nearest station
+    if not station and lat is not None and lon is not None:
+        stations = load_stations()
+        for s in stations:
+            s["distance_km"] = haversine(lat, lon, float(s["lat"]), float(s["lon"]))
+        stations.sort(key=lambda s: s["distance_km"])
+        nearest = stations[0]
+        used_station = nearest["id"]
+        estimated = True
+        source_station = nearest
+    else:
+        source_station = None
     params = {
-        "station": station or NOAA_DEFAULT_STATION,
+        "station": used_station or NOAA_DEFAULT_STATION,
         "product": NOAA_PRODUCT,
         "date": "today",
         "datum": NOAA_DATUM,
@@ -136,17 +157,41 @@ def tide_today(date: str = Query(None), station: str = Query(None)):
     moon_resp = requests.get(MOON_API, params={"d": today_jd})
     moon_data = moon_resp.json()
     moon_phase = moon_data[0]["Phase"] if moon_data else "Unknown"
-    return {"date": date, "highs": highs, "lows": lows, "moon_phase": moon_phase}
+    response = {"date": date, "highs": highs, "lows": lows, "moon_phase": moon_phase}
+    if estimated:
+        response["estimated"] = True
+        response["source_station"] = source_station
+    return response
 
 @app.get("/tide/week")
-def tide_week(station: str = Query(None)):
+def tide_week(
+    station: str = Query(None),
+    lat: float = Query(None),
+    lon: float = Query(None),
+    town: str = Query(None),
+    state: str = Query(None)
+):
+    estimated = False
+    used_station = station
+    # If no station provided, but lat/lon provided, find nearest station
+    if not station and lat is not None and lon is not None:
+        stations = load_stations()
+        for s in stations:
+            s["distance_km"] = haversine(lat, lon, float(s["lat"]), float(s["lon"]))
+        stations.sort(key=lambda s: s["distance_km"])
+        nearest = stations[0]
+        used_station = nearest["id"]
+        estimated = True
+        source_station = nearest
+    else:
+        source_station = None
     week = []
     today = datetime.date.today()
     for i in range(7):
         day = today + datetime.timedelta(days=i)
         date_str = day.strftime("%Y%m%d")
         params = {
-            "station": station or NOAA_DEFAULT_STATION,
+            "station": used_station or NOAA_DEFAULT_STATION,
             "product": NOAA_PRODUCT,
             "date": date_str,
             "datum": NOAA_DATUM,
@@ -167,8 +212,13 @@ def tide_week(station: str = Query(None)):
             moon_phase = moon_data[0]["Phase"] if moon_data else "Unknown"
         except Exception:
             moon_phase = "Unknown"
-        week.append({"date": day.strftime("%Y-%m-%d"), "highs": highs, "lows": lows, "moon_phase": moon_phase})
-    return {"week": week}
+        day_result = {"date": day.strftime("%Y-%m-%d"), "highs": highs, "lows": lows, "moon_phase": moon_phase}
+        week.append(day_result)
+    response = {"week": week}
+    if estimated:
+        response["estimated"] = True
+        response["source_station"] = source_station
+    return response
 
 @app.get("/predictions/week")
 def predictions_week():
