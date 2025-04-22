@@ -52,6 +52,23 @@ class _TideHomePageState extends State<TideHomePage> {
   bool locationLoading = false;
   TextEditingController locationController = TextEditingController();
 
+  Future<void> _addLocationIfNotExists(Map<String, dynamic> loc) async {
+    // Try to add location to backend DB (ignore errors if already exists)
+    try {
+      await http.post(
+        Uri.parse('$backendUrl/locations/add'),
+        body: {
+          'town': loc['town']?.toString() ?? '',
+          'state': loc['state']?.toString() ?? '',
+          'zip_code': loc['zip']?.toString() ?? '',
+          'lat': loc['lat']?.toString() ?? '',
+          'lon': loc['lon']?.toString() ?? '',
+          'stationId': loc['stationId']?.toString() ?? '',
+        },
+      );
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
@@ -201,15 +218,16 @@ class _TideHomePageState extends State<TideHomePage> {
                     return;
                   }
                   setState(() {
-                    selectedTown = loc['town'];
-                    selectedZip = loc['zip'];
-                    selectedLat = loc['lat'];
-                    selectedLon = loc['lon'];
+                    selectedTown = loc['town']?.toString();
+                    selectedZip = loc['zip']?.toString();
+                    selectedLat = loc['lat'] is num ? loc['lat'].toDouble() : double.tryParse(loc['lat'].toString());
+                    selectedLon = loc['lon'] is num ? loc['lon'].toString() : double.tryParse(loc['lon'].toString());
                     selectedStationId = loc['stationId']?.toString() ?? '';
                     _selectedStationName = loc['stationName']?.toString() ?? '';
                     _selectedStationDistanceKm = loc['distanceKm']?.toString() ?? '';
                     locationController.text = '${loc['town']}, ${loc['state']} (${loc['zip']})';
                     locationResults = [];
+                    _addLocationIfNotExists(loc);
                     fetchAll();
                   });
                 },

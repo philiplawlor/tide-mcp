@@ -1,10 +1,16 @@
-from fastapi import FastAPI
+import os
+import sqlite3
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import os
+import datetime
+import requests
+import math
+import json
 
-# Path to cached towns/zipcodes metadata
-TOWNS_PATH = os.path.join(os.path.dirname(__file__), "towns.json")
+# Paths
+DB_PATH = os.path.join(os.path.dirname(__file__), "locations.db")
+STATIONS_PATH = os.path.join(os.path.dirname(__file__), "stations.json")
 
 load_dotenv()
 
@@ -18,32 +24,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS locations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        town TEXT,
+        state TEXT,
+        zip TEXT,
+        lat REAL,
+        lon REAL,
+        stationId TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_used TEXT DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
 @app.get("/")
 def root():
     return {"status": "Tide MCP backend running"}
 
-import datetime
-import requests
-from fastapi import Query
-from fastapi import Request
-from fastapi.responses import JSONResponse
-import math
-import json
-import os
-
-# Helper to get NOAA tides for Stamford, CT (Bridgeport station: 8467150)
 NOAA_DEFAULT_STATION = "8467150"  # Bridgeport, CT (closest to Stamford)
 NOAA_PRODUCT = "predictions"
 NOAA_DATUM = "MLLW"
 NOAA_UNITS = "english"
 NOAA_TIMEZONE = "lst_ldt"
 NOAA_API = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
-
-# Helper to get moon phase from a free API (e.g., farmsense.net)
-MOON_API = "https://api.farmsense.net/v1/moonphases/"  # No API key needed
-
-# Path to cached NOAA stations metadata
-STATIONS_PATH = os.path.join(os.path.dirname(__file__), "stations.json")
+MOON_API = "https://api.farmsense.net/v1/moonphases/"
 
 # Haversine formula to compute distance between two lat/lon points
 def haversine(lat1, lon1, lat2, lon2):
@@ -56,14 +66,45 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-# Load stations from local cache
 def load_stations():
     with open(STATIONS_PATH, "r") as f:
         return json.load(f)
 
-def load_towns():
-    with open(TOWNS_PATH, "r") as f:
-        return json.load(f)
+# --- LOCATION DB UTILITIES ---
+def get_locations(query=None, limit=5):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    if query:
+        q = f"%{query.lower()}%"
+        c.execute("SELECT * FROM locations WHERE LOWER(town) LIKE ? OR LOWER(state) LIKE ? OR zip LIKE ? ORDER BY last_used DESC LIMIT ?", (q, q, q, limit))
+    else:
+        c.execute("SELECT * FROM locations ORDER BY last_used DESC LIMIT ?", (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(zip([col[0] for col in c.description], row)) for row in rows]
+
+def add_or_update_location(town, state, zip_code, lat, lon, stationId):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # Check if already exists
+    c.execute("SELECT id FROM locations WHERE town=? AND state=?", (town, state))
+    row = c.fetchone()
+    if row:
+        c.execute("UPDATE locations SET last_used=CURRENT_TIMESTAMP WHERE id=?", (row[0],))
+    else:
+        c.execute("INSERT INTO locations (town, state, zip, lat, lon, stationId) VALUES (?, ?, ?, ?, ?, ?)", (town, state, zip_code, lat, lon, stationId))
+    conn.commit()
+    conn.close()
+
+@app.get("/locations/search")
+def locations_search(q: str = Query(...), limit: int = 5):
+    results = get_locations(q, limit)
+    return {"locations": results}
+
+@app.post("/locations/add")
+def add_location(town: str, state: str, zip_code: str, lat: float, lon: float, stationId: str):
+    add_or_update_location(town, state, zip_code, lat, lon, stationId)
+    return {"status": "added"}
 
 @app.get("/stations/nearby")
 def stations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int = 5):
@@ -73,26 +114,10 @@ def stations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int
     stations.sort(key=lambda s: s["distance_km"])
     return {"stations": stations[:limit]}
 
-@app.get("/locations/nearby")
-def locations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int = 5):
-    towns = load_towns()
-    for t in towns:
-        t["distance_km"] = haversine(lat, lon, float(t["lat"]), float(t["lon"]))
-    towns.sort(key=lambda t: t["distance_km"])
-    return {"locations": towns[:limit]}
-
-@app.get("/locations/search")
-def locations_search(q: str = Query(...), limit: int = 5):
-    q_lower = q.lower()
-    towns = load_towns()
-    results = [t for t in towns if q_lower in t["town"].lower() or q_lower in t["zip"]]
-    return {"locations": results[:limit]}
-
 @app.get("/tide/today")
 def tide_today(date: str = Query(None), station: str = Query(None)):
     if date is None:
         date = datetime.date.today().strftime("%Y-%m-%d")
-    # NOAA API only supports 'today', 'latest', or 'recent' as date values (not YYYY-MM-DD)
     params = {
         "station": station or NOAA_DEFAULT_STATION,
         "product": NOAA_PRODUCT,
@@ -107,13 +132,11 @@ def tide_today(date: str = Query(None), station: str = Query(None)):
     data = resp.json()
     highs = [t for t in data.get("predictions", []) if t["type"] == "H"]
     lows = [t for t in data.get("predictions", []) if t["type"] == "L"]
-    # Get moon phase
     today_jd = int(datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%j"))
     moon_resp = requests.get(MOON_API, params={"d": today_jd})
     moon_data = moon_resp.json()
     moon_phase = moon_data[0]["Phase"] if moon_data else "Unknown"
     return {"date": date, "highs": highs, "lows": lows, "moon_phase": moon_phase}
-
 
 @app.get("/tide/week")
 def tide_week(station: str = Query(None)):
@@ -147,11 +170,8 @@ def tide_week(station: str = Query(None)):
         week.append({"date": day.strftime("%Y-%m-%d"), "highs": highs, "lows": lows, "moon_phase": moon_phase})
     return {"week": week}
 
-
 @app.get("/predictions/week")
 def predictions_week():
-    # Placeholder for solunar/fishing/hunting predictions
-    # Most free APIs require registration, so here we mock the data
     today = datetime.date.today()
     predictions = []
     for i in range(7):
