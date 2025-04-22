@@ -2,11 +2,12 @@
 
 Tide MCP - Local Tides App
 
-## Version: 1.2.4
+## Version: 1.2.8
 
 ### Recent Changes
-- Manual location entry now works when hitting return/enter in the location field. Users can now enter any location and immediately fetch tide data by pressing enter.
-- Improved location selector TextField with `onSubmitted` handler for better UX.
+- When a user enters only "City, State" as a manual location, the app now automatically looks up the ZIP code using geocoding and appends it to the location display and backend request if found.
+- The app bar and all relevant UI now display the location as "City, State ZIP" when the ZIP is available.
+- Ensured that ZIP is always sent to the backend for both today and week tide data requests when available.
 
 ### Features
 - Dynamic app bar title: `Local Tides [LOCATION_NAME] - v[VERSION]`.

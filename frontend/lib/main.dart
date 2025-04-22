@@ -60,78 +60,125 @@ class _TideHomePageState extends State<TideHomePage> {
 
   // Helper for app bar title
   String _buildAppBarTitle() {
-    String locationName = selectedTown ?? _selectedStationName;
-    String title = 'Local Tides';
-    if (locationName != null && locationName.isNotEmpty) {
-      title += ' [' + locationName.split(',')[0] + ']';
-    }
-    title += ' - v$_version';
-    return title;
+  String locationName = selectedTown ?? _selectedStationName;
+  String title = 'Local Tides';
+  if (locationName != null && locationName.isNotEmpty) {
+    title += ' [' + locationName + ']';
   }
+  title += ' - v$_version';
+  return title;
+}
 
   Future<Map<String, dynamic>?> _geocodeLocation(String input) async {
-    // Use Nominatim OpenStreetMap API for free geocoding
-    final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=' + Uri.encodeComponent(input));
-    final resp = await http.get(url, headers: {'User-Agent': 'TideMCP/1.0'});
-    if (resp.statusCode == 200) {
-      final results = jsonDecode(resp.body);
-      if (results is List && results.isNotEmpty) {
-        final loc = results[0];
-        return {
-          'lat': double.tryParse(loc['lat']),
-          'lon': double.tryParse(loc['lon']),
-          'display_name': loc['display_name'],
-        };
+  // Use Nominatim OpenStreetMap API for free geocoding
+  final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=' + Uri.encodeComponent(input));
+  final resp = await http.get(url, headers: {'User-Agent': 'TideMCP/1.0'});
+  if (resp.statusCode == 200) {
+  final results = jsonDecode(resp.body);
+  if (results is List && results.isNotEmpty) {
+  final loc = results[0];
+  // Try to parse town, state, zip from address if available
+  String? town;
+  String? state;
+  String? zip;
+  if (loc['address'] != null) {
+      final addr = loc['address'];
+        town = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['hamlet'] ?? addr['municipality'] ?? addr['county'];
+        state = addr['state'] ?? addr['region'];
+        zip = addr['postcode'];
       }
+      return {
+        'lat': double.tryParse(loc['lat']),
+        'lon': double.tryParse(loc['lon']),
+        'display_name': loc['display_name'],
+        'town': town,
+        'state': state,
+        'zip': zip,
+      };
     }
-    return null;
   }
+  return null;
+}
 
   Future<void> _selectManualLocation() async {
-    setState(() { manualLocationError = null; });
-    final input = manualLocationController.text.trim();
-    if (input.isEmpty) {
-      setState(() { manualLocationError = 'Please enter a location.'; });
-      return;
-    }
-    final loc = await _geocodeLocation(input);
-    if (loc == null || loc['lat'] == null || loc['lon'] == null) {
-      setState(() { manualLocationError = 'Could not find location.'; });
-      return;
-    }
-    setState(() {
-      selectedLat = loc['lat'];
-      selectedLon = loc['lon'];
-      selectedTown = loc['display_name'];
-      usingManualLocation = true;
-      selectedStationId = null;
-    });
-    await _fetchTideData();
+  setState(() { manualLocationError = null; });
+  final input = manualLocationController.text.trim();
+  if (input.isEmpty) {
+    setState(() { manualLocationError = 'Please enter a location.'; });
+    return;
   }
+  final loc = await _geocodeLocation(input);
+  if (loc == null || loc['lat'] == null || loc['lon'] == null) {
+    setState(() { manualLocationError = 'Could not find location.'; });
+    return;
+  }
+  String? displayLocation;
+  String? zip = loc['zip'];
+  String? town = loc['town'];
+  String? state = loc['state'];
+  // If zip is missing, try to look it up with another geocode query
+  if ((zip == null || zip.isEmpty) && town != null && state != null) {
+    final zipQuery = await _geocodeLocation("$town, $state");
+    if (zipQuery != null && zipQuery['zip'] != null && zipQuery['zip'].toString().isNotEmpty) {
+      zip = zipQuery['zip'];
+    }
+  }
+  if (town != null && state != null) {
+    displayLocation = zip != null && zip.isNotEmpty ? "$town, $state $zip" : "$town, $state";
+  } else {
+    displayLocation = loc['display_name'];
+  }
+  // Update the manual location field with the ZIP if discovered
+  if (town != null && state != null && zip != null && zip.isNotEmpty) {
+    manualLocationController.text = "$town, $state $zip";
+  } else if (town != null && state != null) {
+    manualLocationController.text = "$town, $state";
+  }
+  setState(() {
+    selectedLat = loc['lat'];
+    selectedLon = loc['lon'];
+    selectedTown = displayLocation;
+    selectedZip = zip;
+    usingManualLocation = true;
+    selectedStationId = null;
+  });
+  await _fetchTideData();
+}
 
   Future<void> _fetchTideData() async {
-    setState(() { loading = true; error = ''; });
-    try {
-      String url = '';
-      if (usingManualLocation && selectedLat != null && selectedLon != null) {
-        url = '$backendUrl/tide/today?lat=${selectedLat}&lon=${selectedLon}';
-      } else if (selectedStationId != null) {
-        url = '$backendUrl/tide/today?station=$selectedStationId';
-      } else {
-        setState(() { error = 'No location selected.'; loading = false; });
-        return;
-      }
-      final resp = await http.get(Uri.parse(url));
-      if (resp.statusCode == 200) {
-        todayData = jsonDecode(resp.body);
-      } else {
-        error = 'Failed to fetch tide data.';
-      }
-    } catch (e) {
-      error = 'Error: $e';
+  setState(() { loading = true; error = ''; });
+  try {
+  String url = '';
+  if (usingManualLocation && selectedLat != null && selectedLon != null) {
+  // Add town/state/zip if available
+    List<String> params = [
+    'lat=${selectedLat}',
+      'lon=${selectedLon}'
+  ];
+  if (selectedTown != null && selectedTown!.isNotEmpty) {
+      params.add('town=${Uri.encodeComponent(selectedTown!)}');
     }
-    setState(() { loading = false; });
+  if (selectedZip != null && selectedZip!.isNotEmpty) {
+    params.add('zip=${Uri.encodeComponent(selectedZip!)}');
   }
+  url = '$backendUrl/tide/today?${params.join('&')}';
+    } else if (selectedStationId != null) {
+    url = '$backendUrl/tide/today?station=$selectedStationId';
+    } else {
+      setState(() { error = 'No location selected.'; loading = false; });
+      return;
+    }
+    final resp = await http.get(Uri.parse(url));
+    if (resp.statusCode == 200) {
+      todayData = jsonDecode(resp.body);
+    } else {
+      error = 'Failed to fetch tide data.';
+    }
+  } catch (e) {
+    error = 'Error: $e';
+  }
+  setState(() { loading = false; });
+}
 
   @override
   void initState() {
@@ -161,36 +208,54 @@ class _TideHomePageState extends State<TideHomePage> {
   }
 
   Future<void> fetchAll() async {
-    setState(() {
-      loading = true;
-      error = '';
-    });
-    try {
-      if (selectedStationId == null || selectedStationId!.isEmpty) {
-        setState(() {
-          error = 'No tide station found for this location.';
-          loading = false;
-        });
-        return;
-      }
-      String stationParam = '?station=$selectedStationId';
-      final todayResp = await http.get(Uri.parse('$backendUrl/tide/today$stationParam'));
-      final weekResp = await http.get(Uri.parse('$backendUrl/tide/week$stationParam'));
-      print('DEBUG: /tide/week response body: \\${weekResp.body}');
-      final predResp = await http.get(Uri.parse('$backendUrl/predictions/week'));
-      setState(() {
-        todayData = json.decode(todayResp.body);
-        weekData = json.decode(weekResp.body);
-        predictionData = json.decode(predResp.body);
-        loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        error = e.toString();
-        loading = false;
-      });
+  setState(() {
+  loading = true;
+  error = '';
+  });
+  try {
+  String todayUrl = '';
+  String weekUrl = '';
+  if (usingManualLocation && selectedLat != null && selectedLon != null) {
+  List<String> params = [
+    'lat=${selectedLat}',
+    'lon=${selectedLon}'
+    ];
+    if (selectedTown != null && selectedTown!.isNotEmpty) {
+      params.add('town=${Uri.encodeComponent(selectedTown!)}');
     }
+    if (selectedZip != null && selectedZip!.isNotEmpty) {
+      params.add('zip=${Uri.encodeComponent(selectedZip!)}');
+    }
+  todayUrl = '$backendUrl/tide/today?${params.join('&')}';
+  weekUrl = '$backendUrl/tide/week?${params.join('&')}';
+  } else if (selectedStationId != null && selectedStationId!.isNotEmpty) {
+  String stationParam = '?station=$selectedStationId';
+    todayUrl = '$backendUrl/tide/today$stationParam';
+      weekUrl = '$backendUrl/tide/week$stationParam';
+  } else {
+  setState(() {
+    error = 'No tide station found for this location.';
+      loading = false;
+      });
+      return;
+    }
+    final todayResp = await http.get(Uri.parse(todayUrl));
+    final weekResp = await http.get(Uri.parse(weekUrl));
+    print('DEBUG: /tide/week response body: \\${weekResp.body}');
+    final predResp = await http.get(Uri.parse('$backendUrl/predictions/week'));
+    setState(() {
+      todayData = json.decode(todayResp.body);
+      weekData = json.decode(weekResp.body);
+      predictionData = json.decode(predResp.body);
+      loading = false;
+    });
+  } catch (e) {
+    setState(() {
+      error = e.toString();
+      loading = false;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {
