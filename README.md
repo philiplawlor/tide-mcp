@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.2
+**Version:** 1.2.3
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -65,6 +65,15 @@ Built with:
   ./scripts/update_changelog.sh
   ```
   (Requires `git-cliff` to be installed. See [git-cliff releases](https://github.com/orhun/git-cliff/releases).)
+
+## Versioning Automation
+
+- The project version is stored in the `VERSION` file and in the README.
+- To bump the version:
+  - For a major release: `./scripts/bump_version.sh major`
+  - For a new feature: `./scripts/bump_version.sh minor`
+  - For a fix: `./scripts/bump_version.sh patch`
+- This will update both the `VERSION` file and the version in the README.
 
 ## Features
 

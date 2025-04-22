@@ -1,3 +1,6 @@
+## 1.2.3 - 2025-04-22
+- Fixed a build-breaking bug by removing the undefined `_addLocationIfNotExists` call from `main.dart`.
+- Cleaned up the `TideHomePage` class definition to ensure only one valid implementation exists.
 # CHANGES.md
 
 All significant changes to this project are documented here, grouped by version and date.
