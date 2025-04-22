@@ -220,8 +220,8 @@ class _TideHomePageState extends State<TideHomePage> {
                   setState(() {
                     selectedTown = loc['town']?.toString();
                     selectedZip = loc['zip']?.toString();
-                    selectedLat = loc['lat'] is num ? loc['lat'].toDouble() : double.tryParse(loc['lat'].toString());
-                    selectedLon = loc['lon'] is num ? loc['lon'].toString() : double.tryParse(loc['lon'].toString());
+                    selectedLat = loc['lat'] is num ? (loc['lat'] as num).toDouble() : double.tryParse(loc['lat']?.toString() ?? '');
+                    selectedLon = loc['lon'] is num ? (loc['lon'] as num).toDouble() : double.tryParse(loc['lon']?.toString() ?? '');
                     selectedStationId = loc['stationId']?.toString() ?? '';
                     _selectedStationName = loc['stationName']?.toString() ?? '';
                     _selectedStationDistanceKm = loc['distanceKm']?.toString() ?? '';
@@ -413,7 +413,7 @@ class _TideHomePageState extends State<TideHomePage> {
   Widget _buildWeekView(Map<String, dynamic>? week, Map<String, dynamic>? pred) {
     if (week == null || week['week'] == null) return const Text('No week data');
     List predictions = pred?['predictions'] ?? [];
-    print('DEBUG: week[\'week\'] has \'${week['week'].length}\' days');
+
     return Column(
       children: List.generate(week['week'].length, (i) {
         var day = week['week'][i];
