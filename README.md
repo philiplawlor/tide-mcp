@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.0
+**Version:** 1.2.1
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -33,7 +33,6 @@ Built with:
    ```bash
    uvicorn main:app --reload
    ```
-   - The API will be available at `http://localhost:8000`
 
 ### Frontend Setup (Flutter)
 
@@ -41,52 +40,44 @@ Built with:
    ```bash
    cd frontend
    ```
-2. **Ensure Flutter is installed:**
-   - [Flutter installation guide](https://docs.flutter.dev/get-started/install)
-3. **Get dependencies:**
+2. **Install Flutter dependencies:**
    ```bash
    flutter pub get
    ```
-4. **Run the app:**
+3. **Run the app:**
    ```bash
    flutter run
    ```
-   - The app connects to the backend at `http://localhost:8000` by default.
 
----
+## Testing
+
+- The app now supports robust widget testing using a test-only parameter (`initialLoading`) in `TideHomePage` for modern, testable UI state injection.
+- To run tests:
+  ```bash
+  flutter test
+  ```
+
+## Changelog Automation
+
+- The changelog ([CHANGES.md](CHANGES.md)) is automatically generated from commit history using [`git-cliff`](https://github.com/orhun/git-cliff).
+- To update the changelog, run:
+  ```bash
+  ./scripts/update_changelog.sh
+  ```
+  (Requires `git-cliff` to be installed. See [git-cliff releases](https://github.com/orhun/git-cliff/releases).)
 
 ## Features
 
-### Backend (API)
-- Tide times and heights for any NOAA station (not just Stamford, CT)
-- Moon phase for the current day and week
-- Nearby tide station lookup by latitude/longitude
-- Week-at-a-glance tide, moon, and fishing/hunting predictions (mocked)
-- CORS enabled for local development
-- **Location database (SQLite):**
-  - All location searches use a local SQLite DB (`locations.db`)
-  - New towns/locations are learned and stored as users select them
-  - Includes migration script to import legacy towns from `towns.json`
-
-### Frontend (Flutter App)
-- Starts with no location selected and does not fetch tide data until you select a location
-- Location selection (town/zipcode or geolocation)
-- Learns and stores new locations automatically when selected
-- Displays:
-  - Today's tide chart, high/low times, and heights
-  - Current moon phase
-  - Week view: daily tides, moon phase, fishing/hunting predictions
-- Selects nearest tide station and shows distance
-- Responsive UI for mobile and web
+- Location learning: Select any town/location and it will be stored for future lookups.
+- Tide, moon, and prediction data are shown only after a location is selected.
+- SQLite database for local location storage.
+- Modern testability patterns for Flutter frontend.
 
 ---
 
-## Development Notes
-- Backend: Python 3.8+, FastAPI, uvicorn, requests, python-dotenv, sqlite3
-- Frontend: Flutter 3+, uses `http`, `fl_chart`, `geolocator` packages
-- For production, update backend CORS and API URLs as needed
+## Changelog
+
+- **1.2.1**: Added testable constructor to `TideHomePage` for robust widget testing. All tests now pass reliably. Updated docs for modern testability.
+- **1.2.0**: Switched to SQLite for locations, improved UI/UX, added location learning.
 
 ---
-
-## License
-MIT

@@ -1,0 +1,11 @@
+Track changes with a version number in the README.md file with the major.minor.patch format.
+
+Always update the README.md file with any changes made to the codebase.
+
+Create a CHANGES.md file to document changes between versions.
+
+Add new feature requests/changes to the TODO.md file.
+
+Strikethrough items from the TODO.md list that are done, include the version number.
+
+Push changes to the repository when things are working nicely.

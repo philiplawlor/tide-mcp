@@ -24,7 +24,8 @@ class MyApp extends StatelessWidget {
 }
 
 class TideHomePage extends StatefulWidget {
-  const TideHomePage({super.key});
+  final bool initialLoading;
+  const TideHomePage({super.key, this.initialLoading = true});
 
   @override
   State<TideHomePage> createState() => _TideHomePageState();
@@ -37,7 +38,7 @@ class _TideHomePageState extends State<TideHomePage> {
   Map<String, dynamic>? todayData;
   Map<String, dynamic>? weekData;
   Map<String, dynamic>? predictionData;
-  bool loading = true;
+  late bool loading; // Use late to initialize in initState
   String error = '';
 
   final String backendUrl = 'http://localhost:8000';
@@ -72,6 +73,7 @@ class _TideHomePageState extends State<TideHomePage> {
   @override
   void initState() {
     super.initState();
+    loading = widget.initialLoading;
     // Do not fetch data on startup. Wait for user to select a location.
   }
 

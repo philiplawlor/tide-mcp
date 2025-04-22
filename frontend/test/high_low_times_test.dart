@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tide_mcp/main.dart';
+import '../lib/main.dart';
 
 void main() {
   testWidgets('High and Low tide times are shown', (tester) async {
