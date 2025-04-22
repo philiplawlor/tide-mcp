@@ -23,6 +23,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+
 class TideHomePage extends StatefulWidget {
   final bool initialLoading;
   const TideHomePage({super.key, this.initialLoading = true});
@@ -52,22 +53,72 @@ class _TideHomePageState extends State<TideHomePage> {
   List<Map<String, dynamic>> locationResults = [];
   bool locationLoading = false;
   TextEditingController locationController = TextEditingController();
+  TextEditingController manualLocationController = TextEditingController();
+  bool usingManualLocation = false;
+  String? manualLocationError;
 
-  Future<void> _addLocationIfNotExists(Map<String, dynamic> loc) async {
-    // Try to add location to backend DB (ignore errors if already exists)
+  Future<Map<String, dynamic>?> _geocodeLocation(String input) async {
+    // Use Nominatim OpenStreetMap API for free geocoding
+    final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=' + Uri.encodeComponent(input));
+    final resp = await http.get(url, headers: {'User-Agent': 'TideMCP/1.0'});
+    if (resp.statusCode == 200) {
+      final results = jsonDecode(resp.body);
+      if (results is List && results.isNotEmpty) {
+        final loc = results[0];
+        return {
+          'lat': double.tryParse(loc['lat']),
+          'lon': double.tryParse(loc['lon']),
+          'display_name': loc['display_name'],
+        };
+      }
+    }
+    return null;
+  }
+
+  Future<void> _selectManualLocation() async {
+    setState(() { manualLocationError = null; });
+    final input = manualLocationController.text.trim();
+    if (input.isEmpty) {
+      setState(() { manualLocationError = 'Please enter a location.'; });
+      return;
+    }
+    final loc = await _geocodeLocation(input);
+    if (loc == null || loc['lat'] == null || loc['lon'] == null) {
+      setState(() { manualLocationError = 'Could not find location.'; });
+      return;
+    }
+    setState(() {
+      selectedLat = loc['lat'];
+      selectedLon = loc['lon'];
+      selectedTown = loc['display_name'];
+      usingManualLocation = true;
+      selectedStationId = null;
+    });
+    await _fetchTideData();
+  }
+
+  Future<void> _fetchTideData() async {
+    setState(() { loading = true; error = ''; });
     try {
-      await http.post(
-        Uri.parse('$backendUrl/locations/add'),
-        body: {
-          'town': loc['town']?.toString() ?? '',
-          'state': loc['state']?.toString() ?? '',
-          'zip_code': loc['zip']?.toString() ?? '',
-          'lat': loc['lat']?.toString() ?? '',
-          'lon': loc['lon']?.toString() ?? '',
-          'stationId': loc['stationId']?.toString() ?? '',
-        },
-      );
-    } catch (_) {}
+      String url = '';
+      if (usingManualLocation && selectedLat != null && selectedLon != null) {
+        url = '$backendUrl/tide/today?lat=${selectedLat}&lon=${selectedLon}';
+      } else if (selectedStationId != null) {
+        url = '$backendUrl/tide/today?station=$selectedStationId';
+      } else {
+        setState(() { error = 'No location selected.'; loading = false; });
+        return;
+      }
+      final resp = await http.get(Uri.parse(url));
+      if (resp.statusCode == 200) {
+        todayData = jsonDecode(resp.body);
+      } else {
+        error = 'Failed to fetch tide data.';
+      }
+    } catch (e) {
+      error = 'Error: $e';
+    }
+    setState(() { loading = false; });
   }
 
   @override
@@ -229,7 +280,6 @@ class _TideHomePageState extends State<TideHomePage> {
                     _selectedStationDistanceKm = loc['distanceKm']?.toString() ?? '';
                     locationController.text = '${loc['town']}, ${loc['state']} (${loc['zip']})';
                     locationResults = [];
-                    _addLocationIfNotExists(loc);
                     fetchAll();
                   });
                 },
