@@ -1,16 +1,20 @@
 # frontend
 
-A new Flutter project.
+Tide MCP - Local Tides App
 
-## Getting Started
+## Version: 1.2.4
 
-This project is a starting point for a Flutter application.
+### Recent Changes
+- Manual location entry now works when hitting return/enter in the location field. Users can now enter any location and immediately fetch tide data by pressing enter.
+- Improved location selector TextField with `onSubmitted` handler for better UX.
 
-A few resources to get you started if this is your first Flutter project:
+### Features
+- Dynamic app bar title: `Local Tides [LOCATION_NAME] - v[VERSION]`.
+- Select or enter any location (not just from the database).
+- Geocoding via Nominatim OpenStreetMap API for manual entries.
+- Tide/fishing data fetched for any location, including new ones.
+- Version is loaded from the assets VERSION file.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Getting Started
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This is a Flutter application for viewing local tide and fishing data. For help getting started with Flutter development, view the [online documentation](https://docs.flutter.dev/).

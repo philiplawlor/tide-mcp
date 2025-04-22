@@ -35,6 +35,7 @@ class TideHomePage extends StatefulWidget {
 class _TideHomePageState extends State<TideHomePage> {
   String _selectedStationName = '';
   String _selectedStationDistanceKm = '';
+  String _version = '1.2.2'; // Default, will try to update from VERSION file
 
   Map<String, dynamic>? todayData;
   Map<String, dynamic>? weekData;
@@ -56,6 +57,17 @@ class _TideHomePageState extends State<TideHomePage> {
   TextEditingController manualLocationController = TextEditingController();
   bool usingManualLocation = false;
   String? manualLocationError;
+
+  // Helper for app bar title
+  String _buildAppBarTitle() {
+    String locationName = selectedTown ?? _selectedStationName;
+    String title = 'Local Tides';
+    if (locationName != null && locationName.isNotEmpty) {
+      title += ' [' + locationName.split(',')[0] + ']';
+    }
+    title += ' - v$_version';
+    return title;
+  }
 
   Future<Map<String, dynamic>?> _geocodeLocation(String input) async {
     // Use Nominatim OpenStreetMap API for free geocoding
@@ -124,8 +136,28 @@ class _TideHomePageState extends State<TideHomePage> {
   @override
   void initState() {
     super.initState();
-    loading = widget.initialLoading;
-    // Do not fetch data on startup. Wait for user to select a location.
+    loading = false;
+    // Load version from VERSION file (if running as Flutter desktop/mobile)
+    _loadVersion();
+    // Show location selector immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        loading = false;
+      });
+    });
+  }
+
+  void _loadVersion() async {
+    // Only works if running with access to assets or file system
+    try {
+      // For web, this may need a different approach
+      final version = await DefaultAssetBundle.of(context).loadString('assets/VERSION');
+      setState(() {
+        _version = version.trim();
+      });
+    } catch (e) {
+      // fallback to default
+    }
   }
 
   Future<void> fetchAll() async {
@@ -164,7 +196,7 @@ class _TideHomePageState extends State<TideHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Local Tide Clock'),
+        title: Text(_buildAppBarTitle()),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -176,48 +208,48 @@ class _TideHomePageState extends State<TideHomePage> {
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : (selectedStationId == null || selectedStationId!.isEmpty)
-            ? Center(child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildLocationSelector(),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Please select a location to view tide data.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                  ),
-                ],
-              ))
-            : error.isNotEmpty
-                ? Center(child: Text('Error: $error'))
-                : RefreshIndicator(
-                    onRefresh: fetchAll,
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        _buildLocationSelector(),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Today',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildTideChart(todayData),
-                        const SizedBox(height: 8),
-                        _buildHighLowTimes(todayData),
-                        const SizedBox(height: 8),
-                        _buildMoonPhase(todayData),
-                        const Divider(height: 32),
-                        Text(
-                          'Week at a Glance',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        _buildWeekView(weekData, predictionData),
-                      ],
-                    ),
-                  ),
+      ? const Center(child: CircularProgressIndicator())
+      : ((selectedStationId == null || selectedStationId!.isEmpty) && !usingManualLocation)
+      ? Center(child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+      _buildLocationSelector(),
+      const SizedBox(height: 24),
+      Text(
+      'Please select a location to view tide data.',
+      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+      ),
+      ],
+      ))
+      : error.isNotEmpty
+      ? Center(child: Text('Error: $error'))
+      : RefreshIndicator(
+      onRefresh: fetchAll,
+      child: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+      _buildLocationSelector(),
+      const SizedBox(height: 16),
+      Text(
+      'Today',
+      style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      _buildTideChart(todayData),
+      const SizedBox(height: 8),
+      _buildHighLowTimes(todayData),
+      const SizedBox(height: 8),
+      _buildMoonPhase(todayData),
+      const Divider(height: 32),
+      Text(
+      'Week at a Glance',
+      style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      _buildWeekView(weekData, predictionData),
+      ],
+      ),
+      ),
     );
   }
 
@@ -230,19 +262,25 @@ class _TideHomePageState extends State<TideHomePage> {
           children: [
             Expanded(
               child: TextField(
-                controller: locationController,
-                decoration: const InputDecoration(
-                  hintText: 'Enter town, state or zip code',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onChanged: (value) {
-                  if (value.length > 1) {
-                    _searchLocations(value);
-                  } else {
-                    setState(() { locationResults = []; });
-                  }
-                },
+              controller: locationController,
+              decoration: const InputDecoration(
+              hintText: 'Enter town, state or zip code',
+              prefixIcon: Icon(Icons.search),
               ),
+              onChanged: (value) {
+              if (value.length > 1) {
+              _searchLocations(value);
+              } else {
+              setState(() { locationResults = []; });
+              }
+              },
+                onSubmitted: (value) {
+                   if (value.trim().isNotEmpty) {
+                     manualLocationController.text = value.trim();
+                     _selectManualLocation();
+                   }
+                 },
+               ),
             ),
             IconButton(
               icon: const Icon(Icons.my_location),
