@@ -10,7 +10,6 @@ import json
 
 # Paths
 DB_PATH = os.path.join(os.path.dirname(__file__), "locations.db")
-STATIONS_PATH = os.path.join(os.path.dirname(__file__), "stations.json")
 
 load_dotenv()
 
@@ -47,13 +46,40 @@ init_db()
 def root():
     return {"status": "Tide MCP backend running"}
 
-NOAA_DEFAULT_STATION = "8467150"  # Bridgeport, CT (closest to Stamford)
+NOAA_DEFAULT_STATION = "8467150"  # Bridgeport, CT (fallback)
 NOAA_PRODUCT = "predictions"
 NOAA_DATUM = "MLLW"
 NOAA_UNITS = "english"
 NOAA_TIMEZONE = "lst_ldt"
 NOAA_API = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
 MOON_API = "https://api.farmsense.net/v1/moonphases/"
+
+# Hardcoded NOAA stations (id, name, lat, lon)
+NOAA_STATIONS = [
+    {"id": "8418150", "name": "Portland, ME", "lat": 43.6615, "lon": -70.2553},
+    {"id": "8419807", "name": "Kennebunkport, ME", "lat": 43.3618, "lon": -70.4762},
+    {"id": "8413320", "name": "Bar Harbor, ME", "lat": 44.3876, "lon": -68.2039},
+    {"id": "8419317", "name": "Wells, ME", "lat": 43.3212, "lon": -70.5806},
+    {"id": "8419528", "name": "York, ME", "lat": 43.1617, "lon": -70.6467},
+    {"id": "8423745", "name": "Portsmouth, NH", "lat": 43.0718, "lon": -70.7626},
+    {"id": "8429489", "name": "Hampton, NH", "lat": 42.9117, "lon": -70.8120},
+    {"id": "8440466", "name": "Newburyport, MA", "lat": 42.8126, "lon": -70.8773},
+    {"id": "8441841", "name": "Gloucester, MA", "lat": 42.6159, "lon": -70.6610},
+    {"id": "8442645", "name": "Salem, MA", "lat": 42.5195, "lon": -70.8967},
+    {"id": "8443970", "name": "Boston, MA", "lat": 42.3601, "lon": -71.0589},
+    {"id": "8446493", "name": "Plymouth, MA", "lat": 41.9584, "lon": -70.6673},
+    {"id": "8447435", "name": "Chatham, MA", "lat": 41.6826, "lon": -69.9656},
+    {"id": "8447930", "name": "Hyannis, MA", "lat": 41.6525, "lon": -70.2881},
+    {"id": "8447180", "name": "Sandwich, MA", "lat": 41.7587, "lon": -70.4934},
+    {"id": "8452660", "name": "Newport, RI", "lat": 41.4901, "lon": -71.3128},
+    {"id": "8454658", "name": "Narragansett, RI", "lat": 41.4501, "lon": -71.4495},
+    {"id": "8455189", "name": "Westerly, RI", "lat": 41.3776, "lon": -71.8273},
+    {"id": "8461490", "name": "Stonington, CT", "lat": 41.3357, "lon": -71.9054},
+    {"id": "8461809", "name": "Mystic, CT", "lat": 41.3543, "lon": -71.9665},
+    {"id": "8465705", "name": "Old Saybrook, CT", "lat": 41.2915, "lon": -72.3764},
+    {"id": "8467150", "name": "Bridgeport, CT", "lat": 41.1792, "lon": -73.1894},
+    {"id": "8468448", "name": "Stamford, CT", "lat": 41.0534, "lon": -73.5387},
+]
 
 # Haversine formula to compute distance between two lat/lon points
 def haversine(lat1, lon1, lat2, lon2):
@@ -66,9 +92,6 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def load_stations():
-    with open(STATIONS_PATH, "r") as f:
-        return json.load(f)
 
 # --- LOCATION DB UTILITIES ---
 def get_locations(query=None, limit=5):
@@ -108,11 +131,7 @@ def add_location(town: str, state: str, zip_code: str, lat: float, lon: float, s
 
 @app.get("/stations/nearby")
 def stations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int = 5):
-    stations = load_stations()
-    for s in stations:
-        s["distance_km"] = haversine(lat, lon, float(s["lat"]), float(s["lon"]))
-    stations.sort(key=lambda s: s["distance_km"])
-    return {"stations": stations[:limit]}
+    return {"stations": []}
 
 @app.get("/tide/today")
 def tide_today(
@@ -129,12 +148,14 @@ def tide_today(
     used_station = station
     # If no station provided, but lat/lon provided, find nearest station
     if not station and lat is not None and lon is not None:
-        stations = load_stations()
-        for s in stations:
-            s["distance_km"] = haversine(lat, lon, float(s["lat"]), float(s["lon"]))
-        stations.sort(key=lambda s: s["distance_km"])
-        nearest = stations[0]
-        used_station = nearest["id"]
+        min_dist = float('inf')
+        nearest = None
+        for s in NOAA_STATIONS:
+            dist = haversine(lat, lon, s["lat"], s["lon"])
+            if dist < min_dist:
+                min_dist = dist
+                nearest = s
+        used_station = nearest["id"] if nearest else NOAA_DEFAULT_STATION
         estimated = True
         source_station = nearest
     else:
@@ -175,12 +196,14 @@ def tide_week(
     used_station = station
     # If no station provided, but lat/lon provided, find nearest station
     if not station and lat is not None and lon is not None:
-        stations = load_stations()
-        for s in stations:
-            s["distance_km"] = haversine(lat, lon, float(s["lat"]), float(s["lon"]))
-        stations.sort(key=lambda s: s["distance_km"])
-        nearest = stations[0]
-        used_station = nearest["id"]
+        min_dist = float('inf')
+        nearest = None
+        for s in NOAA_STATIONS:
+            dist = haversine(lat, lon, s["lat"], s["lon"])
+            if dist < min_dist:
+                min_dist = dist
+                nearest = s
+        used_station = nearest["id"] if nearest else NOAA_DEFAULT_STATION
         estimated = True
         source_station = nearest
     else:

@@ -1,3 +1,13 @@
+## 1.2.6 - 2025-04-22
+- Refactor: Removed all references to towns.json and stations.json. The backend now uses a default station for manual/geocoded locations.
+
+## 1.2.5 - 2025-04-22
+- Fixed: Tide data is now displayed after entering a manual location and pressing enter. The UI now shows tide data for both database and manual/geocoded locations.
+
+## 1.2.4 - 2025-04-22
+- Fixed: Manual location entry now works when hitting return/enter in the location field. Users can now enter any location and immediately fetch tide data by pressing enter.
+- UI: Improved location selector TextField with `onSubmitted` handler.
+
 ## 1.2.3 - 2025-04-22
 - Fixed a build-breaking bug by removing the undefined `_addLocationIfNotExists` call from `main.dart`.
 - Cleaned up the `TideHomePage` class definition to ensure only one valid implementation exists.
