@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
+# Path to cached towns/zipcodes metadata
+TOWNS_PATH = os.path.join(os.path.dirname(__file__), "towns.json")
+
 load_dotenv()
 
 app = FastAPI()
@@ -58,6 +61,10 @@ def load_stations():
     with open(STATIONS_PATH, "r") as f:
         return json.load(f)
 
+def load_towns():
+    with open(TOWNS_PATH, "r") as f:
+        return json.load(f)
+
 @app.get("/stations/nearby")
 def stations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int = 5):
     stations = load_stations()
@@ -66,13 +73,28 @@ def stations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int
     stations.sort(key=lambda s: s["distance_km"])
     return {"stations": stations[:limit]}
 
+@app.get("/locations/nearby")
+def locations_nearby(lat: float = Query(...), lon: float = Query(...), limit: int = 5):
+    towns = load_towns()
+    for t in towns:
+        t["distance_km"] = haversine(lat, lon, float(t["lat"]), float(t["lon"]))
+    towns.sort(key=lambda t: t["distance_km"])
+    return {"locations": towns[:limit]}
+
+@app.get("/locations/search")
+def locations_search(q: str = Query(...), limit: int = 5):
+    q_lower = q.lower()
+    towns = load_towns()
+    results = [t for t in towns if q_lower in t["town"].lower() or q_lower in t["zip"]]
+    return {"locations": results[:limit]}
+
 @app.get("/tide/today")
-def tide_today(date: str = Query(None, description="YYYY-MM-DD, default today")):
+def tide_today(date: str = Query(None), station: str = Query(None)):
     if date is None:
         date = datetime.date.today().strftime("%Y-%m-%d")
     # NOAA API only supports 'today', 'latest', or 'recent' as date values (not YYYY-MM-DD)
     params = {
-        "station": NOAA_DEFAULT_STATION,
+        "station": station or NOAA_DEFAULT_STATION,
         "product": NOAA_PRODUCT,
         "date": "today",
         "datum": NOAA_DATUM,
@@ -92,15 +114,16 @@ def tide_today(date: str = Query(None, description="YYYY-MM-DD, default today"))
     moon_phase = moon_data[0]["Phase"] if moon_data else "Unknown"
     return {"date": date, "highs": highs, "lows": lows, "moon_phase": moon_phase}
 
+
 @app.get("/tide/week")
-def tide_week():
+def tide_week(station: str = Query(None)):
     week = []
     today = datetime.date.today()
     for i in range(7):
         day = today + datetime.timedelta(days=i)
         date_str = day.strftime("%Y%m%d")
         params = {
-            "station": NOAA_DEFAULT_STATION,
+            "station": station or NOAA_DEFAULT_STATION,
             "product": NOAA_PRODUCT,
             "date": date_str,
             "datum": NOAA_DATUM,

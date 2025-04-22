@@ -1,0 +1,12 @@
+[
+  {"town": "Stamford", "zip": "06901", "lat": 41.0534, "lon": -73.5387},
+  {"town": "Greenwich", "zip": "06830", "lat": 41.0262, "lon": -73.6282},
+  {"town": "Darien", "zip": "06820", "lat": 41.0787, "lon": -73.4693},
+  {"town": "Norwalk", "zip": "06851", "lat": 41.1176, "lon": -73.4082},
+  {"town": "New Canaan", "zip": "06840", "lat": 41.1468, "lon": -73.4940},
+  {"town": "Westport", "zip": "06880", "lat": 41.1415, "lon": -73.3579},
+  {"town": "Ridgefield", "zip": "06877", "lat": 41.2815, "lon": -73.4985},
+  {"town": "Wilton", "zip": "06897", "lat": 41.1959, "lon": -73.4379},
+  {"town": "Fairfield", "zip": "06824", "lat": 41.1408, "lon": -73.2613},
+  {"town": "Bridgeport", "zip": "06604", "lat": 41.1792, "lon": -73.1894}
+]

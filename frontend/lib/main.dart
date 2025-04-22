@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:geolocator/geolocator.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
 }
 
 class TideHomePage extends StatefulWidget {
-  const TideHomePage({Key? key}) : super(key: key);
+  const TideHomePage({super.key});
 
   @override
   State<TideHomePage> createState() => _TideHomePageState();
@@ -38,6 +39,15 @@ class _TideHomePageState extends State<TideHomePage> {
 
   final String backendUrl = 'http://localhost:8000';
 
+  // Location selection state
+  String? selectedTown;
+  String? selectedZip;
+  double? selectedLat;
+  double? selectedLon;
+  List<Map<String, dynamic>> locationResults = [];
+  bool locationLoading = false;
+  TextEditingController locationController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -50,9 +60,26 @@ class _TideHomePageState extends State<TideHomePage> {
       error = '';
     });
     try {
-      final todayResp = await http.get(Uri.parse('$backendUrl/tide/today'));
-      final weekResp = await http.get(Uri.parse('$backendUrl/tide/week'));
-      print('DEBUG: /tide/week response body: ' + weekResp.body);
+      String stationParam = '';
+      // Bridgeport (8467150) is the default, but if user selected a location, use the closest station
+      if (selectedTown != null) {
+        // Map town to station (hardcoded for now, Bridgeport for Stamford, Norwalk for Norwalk, etc.)
+        // Extend this mapping as needed
+        final townToStation = {
+          'Stamford': '8467150',
+          'Bridgeport': '8467150',
+          'Norwalk': '8468448',
+          'Greenwich': '8466139',
+          'Westport': '8467726',
+          // Add more as needed
+        };
+        if (townToStation.containsKey(selectedTown)) {
+          stationParam = '?station=${townToStation[selectedTown]}';
+        }
+      }
+      final todayResp = await http.get(Uri.parse('$backendUrl/tide/today$stationParam'));
+      final weekResp = await http.get(Uri.parse('$backendUrl/tide/week$stationParam'));
+      print('DEBUG: /tide/week response body: ${weekResp.body}');
       final predResp = await http.get(Uri.parse('$backendUrl/predictions/week'));
       setState(() {
         todayData = json.decode(todayResp.body);
@@ -72,7 +99,7 @@ class _TideHomePageState extends State<TideHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stamford Tide MCP'),
+        title: const Text('Local Tide Clock'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -92,6 +119,8 @@ class _TideHomePageState extends State<TideHomePage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      _buildLocationSelector(),
+                      const SizedBox(height: 16),
                       Text(
                         'Today: ${todayData?["date"] ?? "-"}',
                         style: Theme.of(context).textTheme.headlineSmall,
@@ -113,6 +142,115 @@ class _TideHomePageState extends State<TideHomePage> {
                   ),
                 ),
     );
+  }
+
+  Widget _buildLocationSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Choose Location:', style: TextStyle(fontWeight: FontWeight.bold)),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: locationController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter town or zip code',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  if (value.length > 1) {
+                    _searchLocations(value);
+                  } else {
+                    setState(() { locationResults = []; });
+                  }
+                },
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.my_location),
+              tooltip: 'Use Current Location',
+              onPressed: _findNearbyLocations,
+            ),
+          ],
+        ),
+        if (locationLoading) const LinearProgressIndicator(),
+        if (locationResults.isNotEmpty)
+          ...locationResults.take(5).map((loc) => ListTile(
+                title: Text('${loc['town']} (${loc['zip']})'),
+                subtitle: Text('Lat: ${loc['lat']}, Lon: ${loc['lon']}'),
+                onTap: () {
+                  setState(() {
+                    selectedTown = loc['town'];
+                    selectedZip = loc['zip'];
+                    selectedLat = loc['lat'];
+                    selectedLon = loc['lon'];
+                    locationController.text = '${loc['town']} (${loc['zip']})';
+                    locationResults = [];
+                  });
+                  // Only update selection, do not fetchAll here
+                },
+              )),
+        if (selectedTown != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+                children: [
+                  Text('Selected: $selectedTown ($selectedZip)', style: const TextStyle(color: Colors.blue)),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      fetchAll();
+                    },
+                    child: const Text('Submit'),
+                  )
+                ],
+              ),
+          ),
+      ],
+    );
+  }
+
+  void _searchLocations(String query) async {
+    setState(() { locationLoading = true; });
+    try {
+      final resp = await http.get(Uri.parse('$backendUrl/locations/search?q=$query'));
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body);
+        setState(() {
+          locationResults = List<Map<String, dynamic>>.from(data['locations']);
+          locationLoading = false;
+        });
+      } else {
+        setState(() { locationLoading = false; });
+      }
+    } catch (e) {
+      setState(() { locationLoading = false; });
+    }
+  }
+
+  void _findNearbyLocations() async {
+    setState(() { locationLoading = true; });
+    // Try to get device location
+    try {
+      // Use geolocator package
+      // (You may need to handle permissions and errors)
+      final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final lat = position.latitude;
+      final lon = position.longitude;
+      final resp = await http.get(Uri.parse('$backendUrl/locations/nearby?lat=$lat&lon=$lon'));
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body);
+        setState(() {
+          locationResults = List<Map<String, dynamic>>.from(data['locations']);
+          locationLoading = false;
+        });
+      } else {
+        setState(() { locationLoading = false; });
+      }
+    } catch (e) {
+      setState(() { locationLoading = false; });
+    }
   }
 
   Widget _buildTideChart(Map<String, dynamic>? data) {
@@ -230,8 +368,8 @@ class _TideHomePageState extends State<TideHomePage> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Highs: ' + (day['highs'] as List).map((t) => t['t']).join(', ')),
-                Text('Lows: ' + (day['lows'] as List).map((t) => t['t']).join(', ')),
+                Text('Highs: ${(day['highs'] as List).map((t) => t['t']).join(', ')}'),
+                Text('Lows: ${(day['lows'] as List).map((t) => t['t']).join(', ')}'),
                 Text('Moon: ${day['moon_phase']}'),
                 Text('Fishing: ${predDay['fishing'] ?? "-"}'),
                 Text('Hunting: ${predDay['hunting'] ?? "-"}'),
