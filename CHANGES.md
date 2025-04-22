@@ -4,6 +4,16 @@ All significant changes to this project are documented here, grouped by version 
 
 ---
 
+## [1.2.2] - 2025-04-22
+### Added
+- Locations not in the database are now selectable and will return estimated tide schedules using the nearest NOAA station.
+- Backend API for `/tide/today` and `/tide/week` now accepts lat/lon and returns an `estimated` flag and `source_station` info for non-database locations.
+
+### Changed
+- Patch version bump to 1.2.2 for this backend/API fix.
+
+---
+
 ## [1.2.1] - 2025-04-22
 ### Added
 - Modern testability: Introduced `initialLoading` parameter to `TideHomePage` for robust widget testing and state injection.

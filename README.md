@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.1
+**Version:** 1.2.2
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -77,6 +77,7 @@ Built with:
 
 ## Changelog
 
+- **1.2.2**: Locations not in the database are now selectable and return estimated tides using the nearest NOAA station. Backend API returns an `estimated` flag and source station info for non-database locations.
 - **1.2.1**: Added testable constructor to `TideHomePage` for robust widget testing. All tests now pass reliably. Updated docs for modern testability.
 - **1.2.0**: Switched to SQLite for locations, improved UI/UX, added location learning.
 
