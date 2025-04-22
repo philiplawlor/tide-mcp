@@ -31,6 +31,9 @@ class TideHomePage extends StatefulWidget {
 }
 
 class _TideHomePageState extends State<TideHomePage> {
+  String _selectedStationName = '';
+  String _selectedStationDistanceKm = '';
+
   Map<String, dynamic>? todayData;
   Map<String, dynamic>? weekData;
   Map<String, dynamic>? predictionData;
@@ -44,6 +47,7 @@ class _TideHomePageState extends State<TideHomePage> {
   String? selectedZip;
   double? selectedLat;
   double? selectedLon;
+  String? selectedStationId;
   List<Map<String, dynamic>> locationResults = [];
   bool locationLoading = false;
   TextEditingController locationController = TextEditingController();
@@ -51,7 +55,7 @@ class _TideHomePageState extends State<TideHomePage> {
   @override
   void initState() {
     super.initState();
-    fetchAll();
+    // Do not fetch data on startup. Wait for user to select a location.
   }
 
   Future<void> fetchAll() async {
@@ -60,26 +64,17 @@ class _TideHomePageState extends State<TideHomePage> {
       error = '';
     });
     try {
-      String stationParam = '';
-      // Bridgeport (8467150) is the default, but if user selected a location, use the closest station
-      if (selectedTown != null) {
-        // Map town to station (hardcoded for now, Bridgeport for Stamford, Norwalk for Norwalk, etc.)
-        // Extend this mapping as needed
-        final townToStation = {
-          'Stamford': '8467150',
-          'Bridgeport': '8467150',
-          'Norwalk': '8468448',
-          'Greenwich': '8466139',
-          'Westport': '8467726',
-          // Add more as needed
-        };
-        if (townToStation.containsKey(selectedTown)) {
-          stationParam = '?station=${townToStation[selectedTown]}';
-        }
+      if (selectedStationId == null || selectedStationId!.isEmpty) {
+        setState(() {
+          error = 'No tide station found for this location.';
+          loading = false;
+        });
+        return;
       }
+      String stationParam = '?station=$selectedStationId';
       final todayResp = await http.get(Uri.parse('$backendUrl/tide/today$stationParam'));
       final weekResp = await http.get(Uri.parse('$backendUrl/tide/week$stationParam'));
-      print('DEBUG: /tide/week response body: ${weekResp.body}');
+      print('DEBUG: /tide/week response body: \\${weekResp.body}');
       final predResp = await http.get(Uri.parse('$backendUrl/predictions/week'));
       setState(() {
         todayData = json.decode(todayResp.body);
@@ -112,35 +107,47 @@ class _TideHomePageState extends State<TideHomePage> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : error.isNotEmpty
-              ? Center(child: Text('Error: $error'))
-              : RefreshIndicator(
-                  onRefresh: fetchAll,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _buildLocationSelector(),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Today: ${todayData?["date"] ?? "-"}',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildTideChart(todayData),
-                      const SizedBox(height: 8),
-                      _buildHighLowTimes(todayData),
-                      const SizedBox(height: 8),
-                      _buildMoonPhase(todayData),
-                      const Divider(height: 32),
-                      Text(
-                        'Week at a Glance',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildWeekView(weekData, predictionData),
-                    ],
+          : (selectedStationId == null || selectedStationId!.isEmpty)
+            ? Center(child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildLocationSelector(),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Please select a location to view tide data.',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
-                ),
+                ],
+              ))
+            : error.isNotEmpty
+                ? Center(child: Text('Error: $error'))
+                : RefreshIndicator(
+                    onRefresh: fetchAll,
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        _buildLocationSelector(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Today',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildTideChart(todayData),
+                        const SizedBox(height: 8),
+                        _buildHighLowTimes(todayData),
+                        const SizedBox(height: 8),
+                        _buildMoonPhase(todayData),
+                        const Divider(height: 32),
+                        Text(
+                          'Week at a Glance',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildWeekView(weekData, predictionData),
+                      ],
+                    ),
+                  ),
     );
   }
 
@@ -155,7 +162,7 @@ class _TideHomePageState extends State<TideHomePage> {
               child: TextField(
                 controller: locationController,
                 decoration: const InputDecoration(
-                  hintText: 'Enter town or zip code',
+                  hintText: 'Enter town, state or zip code',
                   prefixIcon: Icon(Icons.search),
                 ),
                 onChanged: (value) {
@@ -177,36 +184,67 @@ class _TideHomePageState extends State<TideHomePage> {
         if (locationLoading) const LinearProgressIndicator(),
         if (locationResults.isNotEmpty)
           ...locationResults.take(5).map((loc) => ListTile(
-                title: Text('${loc['town']} (${loc['zip']})'),
-                subtitle: Text('Lat: ${loc['lat']}, Lon: ${loc['lon']}'),
+                title: Text('${loc['town']}, ${loc['state']} (${loc['zip']})'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Lat: ${loc['lat']}, Lon: ${loc['lon']}'),
+                    if (loc['stationName'] != null && loc['stationName'].toString().isNotEmpty)
+                      Text('NOAA Station: ${loc['stationName']}'),
+                  ],
+                ),
                 onTap: () {
+                  if (loc['stationId'] == null || loc['stationId'].toString().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No tide station found for this location')),
+                    );
+                    return;
+                  }
                   setState(() {
                     selectedTown = loc['town'];
                     selectedZip = loc['zip'];
                     selectedLat = loc['lat'];
                     selectedLon = loc['lon'];
-                    locationController.text = '${loc['town']} (${loc['zip']})';
+                    selectedStationId = loc['stationId']?.toString() ?? '';
+                    _selectedStationName = loc['stationName']?.toString() ?? '';
+                    _selectedStationDistanceKm = loc['distanceKm']?.toString() ?? '';
+                    locationController.text = '${loc['town']}, ${loc['state']} (${loc['zip']})';
                     locationResults = [];
+                    fetchAll();
                   });
-                  // Only update selection, do not fetchAll here
                 },
               )),
         if (selectedTown != null)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: Row(
-                children: [
-                  Text('Selected: $selectedTown ($selectedZip)', style: const TextStyle(color: Colors.blue)),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: () {
-                      fetchAll();
-                    },
-                    child: const Text('Submit'),
-                  )
-                ],
-              ),
-          ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Selected: $selectedTown ($selectedZip)', style: const TextStyle(color: Colors.blue)),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: (selectedStationId != null && selectedStationId!.isNotEmpty)
+                          ? () {
+                              fetchAll();
+                            }
+                          : null,
+                      child: const Text('Submit'),
+                    )
+                  ],
+                ),
+                if (selectedStationId != null && selectedStationId!.isNotEmpty && _selectedStationName.isNotEmpty && _selectedStationDistanceKm.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      'Tide data shown is for $_selectedStationName, $_selectedStationDistanceKm km from your selected location.',
+                      style: const TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ),
+              ],
+            ),
+          )
       ],
     );
   }

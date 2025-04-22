@@ -63,6 +63,7 @@ Built with:
 - CORS enabled for local development
 
 ### Frontend (Flutter App)
+- Starts with no location selected and does not fetch tide data until you select a location
 - Location selection (town/zipcode or geolocation)
 - Displays:
   - Today's tide chart, high/low times, and heights
