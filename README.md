@@ -1,9 +1,11 @@
 # Tide MCP
 
-A cross-platform app for Stamford, CT tides, moon phases, and fishing/hunting predictions.
+A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
+
+**Version:** 1.2.0
 
 Built with:
-- **Backend:** FastAPI (Python)
+- **Backend:** FastAPI (Python) + SQLite (locations.db)
 - **Frontend:** Flutter (Dart)
 
 ---
@@ -56,15 +58,20 @@ Built with:
 ## Features
 
 ### Backend (API)
-- Tide times and heights for Stamford, CT (or selected NOAA stations)
+- Tide times and heights for any NOAA station (not just Stamford, CT)
 - Moon phase for the current day and week
 - Nearby tide station lookup by latitude/longitude
 - Week-at-a-glance tide, moon, and fishing/hunting predictions (mocked)
 - CORS enabled for local development
+- **Location database (SQLite):**
+  - All location searches use a local SQLite DB (`locations.db`)
+  - New towns/locations are learned and stored as users select them
+  - Includes migration script to import legacy towns from `towns.json`
 
 ### Frontend (Flutter App)
 - Starts with no location selected and does not fetch tide data until you select a location
 - Location selection (town/zipcode or geolocation)
+- Learns and stores new locations automatically when selected
 - Displays:
   - Today's tide chart, high/low times, and heights
   - Current moon phase
@@ -75,7 +82,7 @@ Built with:
 ---
 
 ## Development Notes
-- Backend: Python 3.8+, FastAPI, uvicorn, requests, python-dotenv
+- Backend: Python 3.8+, FastAPI, uvicorn, requests, python-dotenv, sqlite3
 - Frontend: Flutter 3+, uses `http`, `fl_chart`, `geolocator` packages
 - For production, update backend CORS and API URLs as needed
 
