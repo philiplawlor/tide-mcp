@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.6
+**Version:** 1.2.7
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)

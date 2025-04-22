@@ -1,3 +1,6 @@
+## 1.2.7 - 2025-04-22
+- Release: Tag version 1.2.7 after merge to main. All version numbers and documentation updated.
+
 ## 1.2.6 - 2025-04-22
 - Refactor: Removed all references to towns.json and stations.json. The backend now uses a default station for manual/geocoded locations.
 
