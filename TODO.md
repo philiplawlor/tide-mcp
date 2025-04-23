@@ -14,3 +14,5 @@
 - [ ] Optionally, cache recent location selections for quick access.
 - [ ] Add tests for new backend endpoints (`/locations/search`, `/locations/add`, and `/locations/nearby`).
 - [ ] Document the new endpoints and frontend features in the project README (ongoing).
+- [x] Centered tide chart: 12-hour window, "Now" in the middle, hourly axis labels, curve interpolation. (v1.3.0)
+- [ ] Gather user feedback on the new centered tide chart before merging to main.

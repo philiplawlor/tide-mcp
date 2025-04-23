@@ -1,3 +1,11 @@
+## 1.3.0 - feature branch: centered-tide-chart (not yet merged to main)
+### Added
+- Tide chart now displays a 12-hour window centered on "Now" (current time).
+- X-axis labels are hourly, showing hours before and after "Now" (e.g., -6, -5, ..., 0/Now, ..., +5, +6).
+- The tide curve is interpolated at 30-minute increments to fit the graph window.
+- "Now" is always visually centered in the graph window.
+- Vertical lines for solar/lunar events and "Now" remain accurately positioned.
+
 ## 1.2.9 - 2025-04-22
 - Fix: Added assets/VERSION to pubspec.yaml and moved VERSION file to assets directory so app version is loaded and displayed dynamically in the app bar and MaterialApp title.
 - Chore: Updated README and project structure to ensure asset versioning is robust and future-proof.

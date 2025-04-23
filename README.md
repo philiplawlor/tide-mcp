@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.9
+**Version:** 1.3.0 (feature branch: centered-tide-chart)
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -76,6 +76,13 @@ Built with:
 - This will update both the `VERSION` file and the version in the README.
 
 ## Features
+
+### Tide Chart (feature branch: centered-tide-chart)
+- The tide chart now displays a 12-hour window centered on "Now" (current time).
+- X-axis labels are hourly, showing hours before and after "Now" (e.g., -6, -5, ..., 0/Now, ..., +5, +6).
+- The tide curve is interpolated at 30-minute increments to fit the graph window.
+- "Now" is always visually centered in the graph window.
+- Vertical lines for solar/lunar events and "Now" remain accurately positioned.
 
 - Location learning: Select any town/location and it will be stored for future lookups.
 - Tide, moon, and prediction data are shown only after a location is selected.
