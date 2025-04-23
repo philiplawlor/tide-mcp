@@ -13,19 +13,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Always set the MaterialApp title to include the current version
+    // This will be updated dynamically as the version changes
     return MaterialApp(
-      title: 'Tide MCP',
+      title: 'Tide MCP v${TideHomePage.version}',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       home: const TideHomePage(),
     );
   }
-}
 
+
+}
 
 class TideHomePage extends StatefulWidget {
   final bool initialLoading;
+  static String version = '1.2.8'; // Default, will be updated from VERSION file
   const TideHomePage({super.key, this.initialLoading = true});
 
   @override
@@ -60,125 +64,115 @@ class _TideHomePageState extends State<TideHomePage> {
 
   // Helper for app bar title
   String _buildAppBarTitle() {
-  String locationName = selectedTown ?? _selectedStationName;
-  String title = 'Local Tides';
-  if (locationName != null && locationName.isNotEmpty) {
-    title += ' [' + locationName + ']';
+    String locationName = selectedTown ?? _selectedStationName;
+    String title = 'Local Tides';
+    if (locationName != null && locationName.isNotEmpty) {
+      title += ' [' + locationName + ']';
+    }
+    title += ' - v$_version';
+    return title;
   }
-  title += ' - v$_version';
-  return title;
-}
 
   Future<Map<String, dynamic>?> _geocodeLocation(String input) async {
-  // Use Nominatim OpenStreetMap API for free geocoding
-  final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=' + Uri.encodeComponent(input));
-  final resp = await http.get(url, headers: {'User-Agent': 'TideMCP/1.0'});
-  if (resp.statusCode == 200) {
-  final results = jsonDecode(resp.body);
-  if (results is List && results.isNotEmpty) {
-  final loc = results[0];
-  // Try to parse town, state, zip from address if available
-  String? town;
-  String? state;
-  String? zip;
-  if (loc['address'] != null) {
-      final addr = loc['address'];
-        town = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['hamlet'] ?? addr['municipality'] ?? addr['county'];
-        state = addr['state'] ?? addr['region'];
-        zip = addr['postcode'];
+    final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=' + Uri.encodeComponent(input));
+    final resp = await http.get(url, headers: {'User-Agent': 'TideMCP/1.0'});
+    if (resp.statusCode == 200) {
+      final results = jsonDecode(resp.body);
+      if (results is List && results.isNotEmpty) {
+        final loc = results[0];
+        String? town;
+        String? state;
+        String? zip;
+        if (loc['address'] != null) {
+          final addr = loc['address'];
+          town = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['hamlet'] ?? addr['municipality'] ?? addr['county'];
+          state = addr['state'] ?? addr['region'];
+          zip = addr['postcode'];
+        }
+        return {
+          'lat': double.tryParse(loc['lat']),
+          'lon': double.tryParse(loc['lon']),
+          'display_name': loc['display_name'],
+          'town': town,
+          'state': state,
+          'zip': zip,
+        };
       }
-      return {
-        'lat': double.tryParse(loc['lat']),
-        'lon': double.tryParse(loc['lon']),
-        'display_name': loc['display_name'],
-        'town': town,
-        'state': state,
-        'zip': zip,
-      };
     }
+    return null;
   }
-  return null;
-}
 
   Future<void> _selectManualLocation() async {
-  setState(() { manualLocationError = null; });
-  final input = manualLocationController.text.trim();
-  if (input.isEmpty) {
-    setState(() { manualLocationError = 'Please enter a location.'; });
-    return;
-  }
-  final loc = await _geocodeLocation(input);
-  if (loc == null || loc['lat'] == null || loc['lon'] == null) {
-    setState(() { manualLocationError = 'Could not find location.'; });
-    return;
-  }
-  String? displayLocation;
-  String? zip = loc['zip'];
-  String? town = loc['town'];
-  String? state = loc['state'];
-  // If zip is missing, try to look it up with another geocode query
-  if ((zip == null || zip.isEmpty) && town != null && state != null) {
-    final zipQuery = await _geocodeLocation("$town, $state");
-    if (zipQuery != null && zipQuery['zip'] != null && zipQuery['zip'].toString().isNotEmpty) {
-      zip = zipQuery['zip'];
-    }
-  }
-  if (town != null && state != null) {
-    displayLocation = zip != null && zip.isNotEmpty ? "$town, $state $zip" : "$town, $state";
-  } else {
-    displayLocation = loc['display_name'];
-  }
-  // Update the manual location field with the ZIP if discovered
-  if (town != null && state != null && zip != null && zip.isNotEmpty) {
-    manualLocationController.text = "$town, $state $zip";
-  } else if (town != null && state != null) {
-    manualLocationController.text = "$town, $state";
-  }
-  setState(() {
-    selectedLat = loc['lat'];
-    selectedLon = loc['lon'];
-    selectedTown = displayLocation;
-    selectedZip = zip;
-    usingManualLocation = true;
-    selectedStationId = null;
-  });
-  await fetchAll();
-}
-
-  Future<void> _fetchTideData() async {
-  setState(() { loading = true; error = ''; });
-  try {
-  String url = '';
-  if (usingManualLocation && selectedLat != null && selectedLon != null) {
-  // Add town/state/zip if available
-    List<String> params = [
-    'lat=${selectedLat}',
-      'lon=${selectedLon}'
-  ];
-  if (selectedTown != null && selectedTown!.isNotEmpty) {
-      params.add('town=${Uri.encodeComponent(selectedTown!)}');
-    }
-  if (selectedZip != null && selectedZip!.isNotEmpty) {
-    params.add('zip=${Uri.encodeComponent(selectedZip!)}');
-  }
-  url = '$backendUrl/tide/today?${params.join('&')}';
-    } else if (selectedStationId != null) {
-    url = '$backendUrl/tide/today?station=$selectedStationId';
-    } else {
-      setState(() { error = 'No location selected.'; loading = false; });
+    setState(() { manualLocationError = null; });
+    final input = manualLocationController.text.trim();
+    if (input.isEmpty) {
+      setState(() { manualLocationError = 'Please enter a location.'; });
       return;
     }
-    final resp = await http.get(Uri.parse(url));
-    if (resp.statusCode == 200) {
-      todayData = jsonDecode(resp.body);
-    } else {
-      error = 'Failed to fetch tide data.';
+    final loc = await _geocodeLocation(input);
+    if (loc == null || loc['lat'] == null || loc['lon'] == null) {
+      setState(() { manualLocationError = 'Could not find location.'; });
+      return;
     }
-  } catch (e) {
-    error = 'Error: $e';
+    String? displayLocation;
+    String? zip = loc['zip'];
+    String? town = loc['town'];
+    String? state = loc['state'];
+    if ((zip == null || zip.isEmpty) && town != null && state != null) {
+      final zipQuery = await _geocodeLocation("$town, $state");
+      if (zipQuery != null && zipQuery['zip'] != null && zipQuery['zip'].toString().isNotEmpty) {
+        zip = zipQuery['zip'];
+      }
+    }
+    if (town != null && state != null) {
+      displayLocation = zip != null && zip.isNotEmpty ? "$town, $state $zip" : "$town, $state";
+    } else {
+      displayLocation = loc['display_name'];
+    }
+    setState(() {
+      selectedLat = loc['lat'];
+      selectedLon = loc['lon'];
+      selectedTown = displayLocation;
+      selectedZip = zip;
+      usingManualLocation = true;
+      selectedStationId = null;
+    });
+    await fetchAll();
   }
-  setState(() { loading = false; });
-}
+
+  Future<void> _fetchTideData() async {
+    setState(() { loading = true; error = ''; });
+    try {
+      String url = '';
+      if (usingManualLocation && selectedLat != null && selectedLon != null) {
+        List<String> params = [
+          'lat=${selectedLat}',
+          'lon=${selectedLon}'
+        ];
+        if (selectedTown != null && selectedTown!.isNotEmpty) {
+          params.add('town=${Uri.encodeComponent(selectedTown!)}');
+        }
+        if (selectedZip != null && selectedZip!.isNotEmpty) {
+          params.add('zip=${Uri.encodeComponent(selectedZip!)}');
+        }
+        url = '$backendUrl/tide/today?${params.join('&')}';
+      } else if (selectedStationId != null) {
+        url = '$backendUrl/tide/today?station=$selectedStationId';
+      } else {
+        setState(() { error = 'No location selected.'; loading = false; });
+        return;
+      }
+      final resp = await http.get(Uri.parse(url));
+      if (resp.statusCode == 200) {
+        todayData = jsonDecode(resp.body);
+      } else {
+        error = 'Failed to fetch tide data.';
+      }
+    } catch (e) {
+      error = 'Error: $e';
+    }
+    setState(() { loading = false; });
+  }
 
   @override
   void initState() {
@@ -187,17 +181,15 @@ class _TideHomePageState extends State<TideHomePage> {
     _loadVersion();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() { loading = false; });
-      // Do not fetch data on startup; wait for user to pick a location
     });
   }
 
   void _loadVersion() async {
-    // Only works if running with access to assets or file system
     try {
-      // For web, this may need a different approach
       final version = await DefaultAssetBundle.of(context).loadString('assets/VERSION');
       setState(() {
         _version = version.trim();
+        TideHomePage.version = _version; // Keep static and instance in sync for all titles
       });
     } catch (e) {
       // fallback to default
@@ -205,54 +197,53 @@ class _TideHomePageState extends State<TideHomePage> {
   }
 
   Future<void> fetchAll() async {
-  setState(() {
-  loading = true;
-  error = '';
-  });
-  try {
-  String todayUrl = '';
-  String weekUrl = '';
-  if (usingManualLocation && selectedLat != null && selectedLon != null) {
-  List<String> params = [
-    'lat=${selectedLat}',
-    'lon=${selectedLon}'
-    ];
-    if (selectedTown != null && selectedTown!.isNotEmpty) {
-      params.add('town=${Uri.encodeComponent(selectedTown!)}');
-    }
-    if (selectedZip != null && selectedZip!.isNotEmpty) {
-      params.add('zip=${Uri.encodeComponent(selectedZip!)}');
-    }
-  todayUrl = '$backendUrl/tide/today?${params.join('&')}';
-  weekUrl = '$backendUrl/tide/week?${params.join('&')}';
-  } else if (selectedStationId != null && selectedStationId!.isNotEmpty) {
-  String stationParam = '?station=$selectedStationId';
-    todayUrl = '$backendUrl/tide/today$stationParam';
-      weekUrl = '$backendUrl/tide/week$stationParam';
-  } else {
-  setState(() {
-    error = 'No tide station found for this location.';
-      loading = false;
+    setState(() {
+      loading = true;
+      error = '';
+    });
+    try {
+      String todayUrl = '';
+      String weekUrl = '';
+      if (usingManualLocation && selectedLat != null && selectedLon != null) {
+        List<String> params = [
+          'lat=${selectedLat}',
+          'lon=${selectedLon}'
+        ];
+        if (selectedTown != null && selectedTown!.isNotEmpty) {
+          params.add('town=${Uri.encodeComponent(selectedTown!)}');
+        }
+        if (selectedZip != null && selectedZip!.isNotEmpty) {
+          params.add('zip=${Uri.encodeComponent(selectedZip!)}');
+        }
+        todayUrl = '$backendUrl/tide/today?${params.join('&')}';
+        weekUrl = '$backendUrl/tide/week?${params.join('&')}';
+      } else if (selectedStationId != null && selectedStationId!.isNotEmpty) {
+        String stationParam = '?station=$selectedStationId';
+        todayUrl = '$backendUrl/tide/today$stationParam';
+        weekUrl = '$backendUrl/tide/week$stationParam';
+      } else {
+        setState(() {
+          error = 'No tide station found for this location.';
+          loading = false;
+        });
+        return;
+      }
+      final todayResp = await http.get(Uri.parse(todayUrl));
+      final weekResp = await http.get(Uri.parse(weekUrl));
+      final predResp = await http.get(Uri.parse('$backendUrl/predictions/week'));
+      setState(() {
+        todayData = json.decode(todayResp.body);
+        weekData = json.decode(weekResp.body);
+        predictionData = json.decode(predResp.body);
+        loading = false;
       });
-      return;
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+        loading = false;
+      });
     }
-    final todayResp = await http.get(Uri.parse(todayUrl));
-    final weekResp = await http.get(Uri.parse(weekUrl));
-    print('DEBUG: /tide/week response body: \\${weekResp.body}');
-    final predResp = await http.get(Uri.parse('$backendUrl/predictions/week'));
-    setState(() {
-      todayData = json.decode(todayResp.body);
-      weekData = json.decode(weekResp.body);
-      predictionData = json.decode(predResp.body);
-      loading = false;
-    });
-  } catch (e) {
-    setState(() {
-      error = e.toString();
-      loading = false;
-    });
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -270,48 +261,48 @@ class _TideHomePageState extends State<TideHomePage> {
         ],
       ),
       body: loading
-      ? const Center(child: CircularProgressIndicator())
-      : ((selectedStationId == null || selectedStationId!.isEmpty) && !usingManualLocation)
-      ? Center(child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-      _buildLocationSelector(),
-      const SizedBox(height: 24),
-      Text(
-      'Please select a location to view tide data.',
-      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-      ),
-      ],
-      ))
-      : error.isNotEmpty
-      ? Center(child: Text('Error: $error'))
-      : RefreshIndicator(
-      onRefresh: fetchAll,
-      child: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-      _buildLocationSelector(),
-      const SizedBox(height: 16),
-      Text(
-      'Today',
-      style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: 8),
-      _buildTideChart(todayData),
-      const SizedBox(height: 8),
-      _buildHighLowTimes(todayData),
-      const SizedBox(height: 8),
-      _buildMoonPhase(todayData),
-      const Divider(height: 32),
-      Text(
-      'Week at a Glance',
-      style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: 8),
-      _buildWeekView(weekData, predictionData),
-      ],
-      ),
-      ),
+          ? const Center(child: CircularProgressIndicator())
+          : ((selectedStationId == null || selectedStationId!.isEmpty) && !usingManualLocation)
+              ? Center(child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildLocationSelector(),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Please select a location to view tide data.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                    ),
+                  ],
+                ))
+              : error.isNotEmpty
+                  ? Center(child: Text('Error: $error'))
+                  : RefreshIndicator(
+                      onRefresh: fetchAll,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _buildLocationSelector(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Today',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildTideChart(todayData),
+                          const SizedBox(height: 8),
+                          _buildHighLowTimes(todayData),
+                          const SizedBox(height: 8),
+                          _buildMoonPhase(todayData),
+                          const Divider(height: 32),
+                          Text(
+                            'Week at a Glance',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildWeekView(weekData, predictionData),
+                        ],
+                      ),
+                    ),
     );
   }
 
@@ -324,25 +315,25 @@ class _TideHomePageState extends State<TideHomePage> {
           children: [
             Expanded(
               child: TextField(
-              controller: locationController,
-              decoration: const InputDecoration(
-              hintText: 'Enter town, state or zip code',
-              prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (value) {
-              if (value.length > 1) {
-              _searchLocations(value);
-              } else {
-              setState(() { locationResults = []; });
-              }
-              },
+                controller: locationController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter town, state or zip code',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  if (value.length > 1) {
+                    _searchLocations(value);
+                  } else {
+                    setState(() { locationResults = []; });
+                  }
+                },
                 onSubmitted: (value) {
-                   if (value.trim().isNotEmpty) {
-                     manualLocationController.text = value.trim();
-                     _selectManualLocation();
-                   }
-                 },
-               ),
+                  if (value.trim().isNotEmpty) {
+                    manualLocationController.text = value.trim();
+                    _selectManualLocation();
+                  }
+                },
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.my_location),
@@ -439,10 +430,7 @@ class _TideHomePageState extends State<TideHomePage> {
 
   void _findNearbyLocations() async {
     setState(() { locationLoading = true; });
-    // Try to get device location
     try {
-      // Use geolocator package
-      // (You may need to handle permissions and errors)
       final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       final lat = position.latitude;
       final lon = position.longitude;
@@ -465,7 +453,6 @@ class _TideHomePageState extends State<TideHomePage> {
     if (data == null || data['highs'] == null || data['lows'] == null) {
       return const Text('No tide data');
     }
-    // Merge highs and lows, sort by time
     List<Map<String, dynamic>> events = [];
     for (var t in data['highs']) {
       events.add({'type': 'High', 'time': t['t'], 'height': double.tryParse(t['v'] ?? '0') ?? 0});
@@ -475,26 +462,138 @@ class _TideHomePageState extends State<TideHomePage> {
     }
     events.sort((a, b) => a['time'].compareTo(b['time']));
     if (events.isEmpty) return const Text('No tide events');
-    // Prepare chart data
     List<FlSpot> spots = [];
     for (int i = 0; i < events.length; i++) {
       spots.add(FlSpot(i.toDouble(), events[i]['height']));
     }
 
-    // Calculate current time position
     DateTime now = DateTime.now();
     double? nowX;
-    for (int i = 0; i < events.length - 1; i++) {
-      DateTime t1 = DateTime.parse(events[i]['time']);
-      DateTime t2 = DateTime.parse(events[i + 1]['time']);
-      if (now.isAfter(t1) && now.isBefore(t2)) {
-        double frac = now.difference(t1).inSeconds / t2.difference(t1).inSeconds;
-        nowX = i + frac;
-        break;
+    // Clamp 'Now' to chart range if outside
+    DateTime firstT = DateTime.parse(events.first['time']);
+    DateTime lastT = DateTime.parse(events.last['time']);
+    if (now.isBefore(firstT)) {
+      nowX = 0.0;
+    } else if (now.isAfter(lastT)) {
+      nowX = events.length - 1.0;
+    } else {
+      for (int i = 0; i < events.length - 1; i++) {
+        DateTime t1 = DateTime.parse(events[i]['time']);
+        DateTime t2 = DateTime.parse(events[i + 1]['time']);
+        if (!now.isBefore(t1) && now.isBefore(t2)) {
+          double frac = now.difference(t1).inSeconds / t2.difference(t1).inSeconds;
+          nowX = i + frac;
+          break;
+        }
       }
     }
 
     List<VerticalLine> verticalLines = [];
+    // Helper to find X for a given time string
+    double? findX(String? timeStr) {
+      if (timeStr == null) return null;
+      try {
+        DateTime t = DateTime.parse(timeStr);
+        for (int i = 0; i < events.length - 1; i++) {
+          DateTime t1 = DateTime.parse(events[i]['time']);
+          DateTime t2 = DateTime.parse(events[i + 1]['time']);
+          if (!t.isBefore(t1) && t.isBefore(t2)) {
+            double frac = t.difference(t1).inSeconds / t2.difference(t1).inSeconds;
+            return i + frac;
+          }
+        }
+        // If exactly at the last event
+        if (t.isAtSameMomentAs(DateTime.parse(events.last['time']))) {
+          return events.length - 1.0;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    // Add vertical lines for requested events
+    // Midnight (x=0)
+    verticalLines.add(
+      VerticalLine(
+        x: 0,
+        color: Colors.black,
+        strokeWidth: 2,
+        dashArray: [2, 2],
+        label: VerticalLineLabel(
+          show: true,
+          alignment: Alignment.topLeft,
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          labelResolver: (line) => 'Midnight',
+        ),
+      ),
+    );
+    // Moonrise
+    double? moonriseX = findX(data['moonrise'] as String?);
+    if (moonriseX != null) {
+      verticalLines.add(
+        VerticalLine(
+          x: moonriseX,
+          color: Colors.indigo,
+          strokeWidth: 2,
+          label: VerticalLineLabel(
+            show: true,
+            alignment: Alignment.topLeft,
+            style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold),
+            labelResolver: (line) => 'Moonrise',
+          ),
+        ),
+      );
+    }
+    // Sunrise
+    double? sunriseX = findX(data['sunrise'] as String?);
+    if (sunriseX != null) {
+      verticalLines.add(
+        VerticalLine(
+          x: sunriseX,
+          color: Colors.orange,
+          strokeWidth: 2,
+          label: VerticalLineLabel(
+            show: true,
+            alignment: Alignment.topLeft,
+            style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+            labelResolver: (line) => 'Sunrise',
+          ),
+        ),
+      );
+    }
+    // Moonset
+    double? moonsetX = findX(data['moonset'] as String?);
+    if (moonsetX != null) {
+      verticalLines.add(
+        VerticalLine(
+          x: moonsetX,
+          color: Colors.blueGrey,
+          strokeWidth: 2,
+          label: VerticalLineLabel(
+            show: true,
+            alignment: Alignment.topLeft,
+            style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold),
+            labelResolver: (line) => 'Moonset',
+          ),
+        ),
+      );
+    }
+    // Sunset
+    double? sunsetX = findX(data['sunset'] as String?);
+    if (sunsetX != null) {
+      verticalLines.add(
+        VerticalLine(
+          x: sunsetX,
+          color: Colors.deepOrange,
+          strokeWidth: 2,
+          label: VerticalLineLabel(
+            show: true,
+            alignment: Alignment.topLeft,
+            style: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold),
+            labelResolver: (line) => 'Sunset',
+          ),
+        ),
+      );
+    }
     if (nowX != null) {
       verticalLines.add(
         VerticalLine(
@@ -516,18 +615,99 @@ class _TideHomePageState extends State<TideHomePage> {
       height: 180,
       child: LineChart(
         LineChartData(
-          titlesData: FlTitlesData(show: false),
+          minX: 0.0,
+          maxX: 24.0, // 25 points: x=0 to x=24, with 'Now' at x=12
+
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1.0, // 30-minute increments
+                getTitlesWidget: (value, meta) {
+                  // value: 0 to 24, 'Now' is always at 12
+                  int minutesOffset = ((value - 12) * 30).round();
+                  if (minutesOffset % 60 == 0) {
+                    int hoursOffset = (minutesOffset / 60).round();
+                    String label = hoursOffset == 0 ? 'Now' : (hoursOffset > 0 ? '+$hoursOffset' : '$hoursOffset');
+                    return Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold));
+                  }
+                  return const SizedBox.shrink();
+                },
+                reservedSize: 32,
+              ),
+            ),
+            topTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            verticalInterval: 1.0,
+            getDrawingVerticalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withOpacity(0.3),
+                strokeWidth: 1,
+              );
+            },
+          ),
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
-              spots: spots,
+              spots: (() {
+                // Interpolate tide heights at 30-min intervals from 6h before Now to 6h after
+                if (events.isEmpty) return const <FlSpot>[];
+                final List<FlSpot> newSpots = [];
+                final DateTime now = DateTime.now();
+                final DateTime startTime = now.subtract(const Duration(hours: 6));
+                for (int i = 0; i <= 24; i++) {
+                  DateTime t = startTime.add(Duration(minutes: i * 30));
+                  // Find the two events this t falls between
+                  int idx = 0;
+                  while (idx < events.length - 1 && DateTime.parse(events[idx + 1]['time']).isBefore(t)) {
+                    idx++;
+                  }
+                  DateTime t1 = DateTime.parse(events[idx]['time']);
+                  double v1 = events[idx]['height'];
+                  if (idx == events.length - 1) {
+                    newSpots.add(FlSpot(i.toDouble() - 12, v1));
+                  } else {
+                    DateTime t2 = DateTime.parse(events[idx + 1]['time']);
+                    double v2 = events[idx + 1]['height'];
+                    double frac = t2.isAtSameMomentAs(t1) ? 0.0 : (t.difference(t1).inSeconds / t2.difference(t1).inSeconds);
+                    double v = v1 + (v2 - v1) * frac;
+                    newSpots.add(FlSpot(i.toDouble() - 12, v));
+                  }
+                }
+                return newSpots;
+              })(),
               isCurved: true,
-              barWidth: 3,
               color: Colors.blue,
-              dotData: FlDotData(show: true),
+              barWidth: 3,
+              belowBarData: BarAreaData(
+                show: true,
+                color: Colors.blue.withOpacity(0.2),
+              ),
             ),
           ],
-          extraLinesData: ExtraLinesData(verticalLines: verticalLines),
+          extraLinesData: ExtraLinesData(
+            verticalLines: [
+              ...verticalLines,
+              // Noon line always in the middle
+              VerticalLine(
+                x: (events.length - 1) / 2.0,
+                color: Colors.black87,
+                strokeWidth: 3,
+                label: VerticalLineLabel(
+                  show: true,
+                  alignment: Alignment.topCenter,
+                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+                  labelResolver: (line) => 'Noon',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -589,4 +769,3 @@ class _TideHomePageState extends State<TideHomePage> {
     );
   }
 }
-
