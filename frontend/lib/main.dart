@@ -142,7 +142,7 @@ class _TideHomePageState extends State<TideHomePage> {
     usingManualLocation = true;
     selectedStationId = null;
   });
-  await _fetchTideData();
+  await fetchAll();
 }
 
   Future<void> _fetchTideData() async {
@@ -184,13 +184,10 @@ class _TideHomePageState extends State<TideHomePage> {
   void initState() {
     super.initState();
     loading = false;
-    // Load version from VERSION file (if running as Flutter desktop/mobile)
     _loadVersion();
-    // Show location selector immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        loading = false;
-      });
+      setState(() { loading = false; });
+      // Do not fetch data on startup; wait for user to pick a location
     });
   }
 
