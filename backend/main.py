@@ -218,34 +218,27 @@ def tide_week(
         source_station = None
     week = []
     today = datetime.date.today()
-    end_day = today + datetime.timedelta(days=6)
-    date_range = f"{today.strftime('%Y%m%d')},{end_day.strftime('%Y%m%d')}"
-    params = {
-        "station": used_station or NOAA_DEFAULT_STATION,
-        "product": NOAA_PRODUCT,
-        "date": date_range,
-        "datum": NOAA_DATUM,
-        "units": NOAA_UNITS,
-        "time_zone": NOAA_TIMEZONE,
-        "format": "json",
-        "interval": "hilo"
-    }
-    resp = requests.get(NOAA_API, params=params)
-    data = resp.json()
-    predictions = data.get("predictions", [])
-    # Group predictions by date
-    predictions_by_date = {}
-    for t in predictions:
-        d = t["t"][:10]  # e.g. '2025-04-22'
-        if d not in predictions_by_date:
-            predictions_by_date[d] = []
-        predictions_by_date[d].append(t)
+    week = []
+    today = datetime.date.today()
     for i in range(7):
         day = today + datetime.timedelta(days=i)
-        day_str = day.strftime("%Y-%m-%d")
-        day_preds = predictions_by_date.get(day_str, [])
-        highs = [t for t in day_preds if t["type"] == "H"]
-        lows = [t for t in day_preds if t["type"] == "L"]
+        date_str = day.strftime("%Y%m%d")
+        params = {
+            "station": used_station or NOAA_DEFAULT_STATION,
+            "product": NOAA_PRODUCT,
+            "date": date_str,
+            "datum": NOAA_DATUM,
+            "units": NOAA_UNITS,
+            "time_zone": NOAA_TIMEZONE,
+            "format": "json",
+            "interval": "hilo"
+        }
+        resp = requests.get(NOAA_API, params=params)
+        print(f"[DEBUG] NOAA API /predictions {params} status={resp.status_code} body={resp.text[:200]}")
+        data = resp.json()
+        predictions = data.get("predictions", [])
+        highs = [t for t in predictions if t["type"] == "H"]
+        lows = [t for t in predictions if t["type"] == "L"]
         try:
             jd = int(day.strftime("%j"))
             moon_resp = requests.get(MOON_API, params={"d": jd})
@@ -253,7 +246,7 @@ def tide_week(
             moon_phase = moon_data[0]["Phase"] if moon_data else "Unknown"
         except Exception:
             moon_phase = "Unknown"
-        day_result = {"date": day_str, "highs": highs, "lows": lows, "moon_phase": moon_phase}
+        day_result = {"date": day.strftime("%Y-%m-%d"), "highs": highs, "lows": lows, "moon_phase": moon_phase}
         week.append(day_result)
     response = {"week": week}
     if estimated:
