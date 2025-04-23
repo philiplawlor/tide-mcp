@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.8
+**Version:** 1.2.9
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -86,6 +86,7 @@ Built with:
 
 ## Changelog
 
+- **1.2.9**: Fix: Added assets/VERSION to pubspec.yaml and moved VERSION file to assets directory so app version is loaded and displayed dynamically in the app bar and MaterialApp title.
 - **1.2.8**: Bugfix: The "week at a glance" feature now appears immediately after a location is selected, without needing to refresh. This was fixed by ensuring fetchAll() is called after location selection, not just for today data.
 - **1.2.7**: Refactor: Removed all references to towns.json and stations.json. The backend now uses a default station for manual/geocoded locations.
 - **1.2.6**: Fixed: Tide data is now displayed after entering a manual location and pressing enter. The UI now shows tide data for both database and manual/geocoded locations.
@@ -95,3 +96,4 @@ Built with:
 - **1.2.0**: Switched to SQLite for locations, improved UI/UX, added location learning.
 
 ---
+
