@@ -14,3 +14,16 @@
 - [ ] Optionally, cache recent location selections for quick access.
 - [ ] Add tests for new backend endpoints (`/locations/search`, `/locations/add`, and `/locations/nearby`).
 - [ ] Document the new endpoints and frontend features in the project README (ongoing).
+
+---
+
+## Recommendations / Improvements
+
+- [ ] Add logic to request geolocation permissions at runtime and display user-friendly error messages if denied or if location fetch fails. Provide a fallback for manual entry.
+- [ ] Cache recent location selections in local storage (e.g., using shared_preferences in Flutter), and display them for quick access.
+- [ ] Add automated backend tests (e.g., with pytest and httpx) for `/locations/search`, `/locations/add`, and `/locations/nearby`, covering valid, invalid, and edge-case inputs.
+- [ ] Add a section to the README describing all backend endpoints, their parameters, and example requests/responses. Document new frontend features, especially location learning and selection.
+- [ ] Ensure version consistency between the VERSION file, README, and frontend display.
+- [ ] Continue adding docstrings and inline comments, especially in backend endpoint logic.
+- [ ] Update CHANGES.md and maintain changelog discipline with each release.
+
