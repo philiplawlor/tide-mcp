@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.2.9
+**Version:** 1.3.0
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -49,13 +49,20 @@ Built with:
    flutter run
    ```
 
-## Testing
+## Backend Endpoint Testing
 
-- The app now supports robust widget testing using a test-only parameter (`initialLoading`) in `TideHomePage` for modern, testable UI state injection.
-- To run tests:
-  ```bash
-  flutter test
-  ```
+Automated tests (pytest + httpx + pytest-asyncio) cover:
+- `/locations/search`: valid queries, missing/empty query, and edge cases
+- `/locations/add`: valid adds, missing/invalid fields, duplicate/edge cases
+- `/locations/nearby`: valid lookups, invalid/malformed/edge-case input
+
+To run backend tests:
+```bash
+cd backend
+source .venv/bin/activate
+pytest tests/
+```
+
 
 ## Changelog Automation
 
@@ -86,6 +93,7 @@ Built with:
 
 ## Changelog
 
+- **1.3.0**: Add: Automated backend tests for `/locations/search`, `/locations/add`, `/locations/nearby` (valid, invalid, edge-case inputs; pytest + httpx + pytest-asyncio).
 - **1.2.9**: Fix: Added assets/VERSION to pubspec.yaml and moved VERSION file to assets directory so app version is loaded and displayed dynamically in the app bar and MaterialApp title.
 - **1.2.8**: Bugfix: The "week at a glance" feature now appears immediately after a location is selected, without needing to refresh. This was fixed by ensuring fetchAll() is called after location selection, not just for today data.
 - **1.2.7**: Refactor: Removed all references to towns.json and stations.json. The backend now uses a default station for manual/geocoded locations.

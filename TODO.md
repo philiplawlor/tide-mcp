@@ -12,7 +12,7 @@
 - [x] Fix: Added assets/VERSION to pubspec.yaml and moved VERSION file to assets directory so app version is loaded and displayed dynamically in the app bar and MaterialApp title. (v1.2.9)
 - [ ] Handle geolocation permissions and errors gracefully in the frontend.
 - [ ] Optionally, cache recent location selections for quick access.
-- [ ] Add tests for new backend endpoints (`/locations/search`, `/locations/add`, and `/locations/nearby`).
+- [x] Add tests for new backend endpoints (`/locations/search`, `/locations/add`, and `/locations/nearby`). (v1.3.0, covers valid, invalid, and edge-case inputs)
 - [ ] Document the new endpoints and frontend features in the project README (ongoing).
 
 ---
@@ -21,7 +21,7 @@
 
 - [ ] Add logic to request geolocation permissions at runtime and display user-friendly error messages if denied or if location fetch fails. Provide a fallback for manual entry.
 - [ ] Cache recent location selections in local storage (e.g., using shared_preferences in Flutter), and display them for quick access.
-- [ ] Add automated backend tests (e.g., with pytest and httpx) for `/locations/search`, `/locations/add`, and `/locations/nearby`, covering valid, invalid, and edge-case inputs.
+- [x] ~~Add automated backend tests (e.g., with pytest and httpx) for `/locations/search`, `/locations/add`, and `/locations/nearby`, covering valid, invalid, and edge-case inputs.~~ (v1.3.0)
 - [ ] Add a section to the README describing all backend endpoints, their parameters, and example requests/responses. Document new frontend features, especially location learning and selection.
 - [ ] Ensure version consistency between the VERSION file, README, and frontend display.
 - [ ] Continue adding docstrings and inline comments, especially in backend endpoint logic.
