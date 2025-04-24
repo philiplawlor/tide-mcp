@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.3.0
+**Version:** 1.3.1
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -52,9 +52,9 @@ Built with:
 ## Backend Endpoint Testing
 
 Automated tests (pytest + httpx + pytest-asyncio) cover:
-- `/locations/search`: valid queries, missing/empty query, and edge cases
-- `/locations/add`: valid adds, missing/invalid fields, duplicate/edge cases
-- `/locations/nearby`: valid lookups, invalid/malformed/edge-case input
+- `/locations/search`: Now uses `query` as the parameter (not `q`). Returns `{"locations": [...]}`. Tests cover valid queries, missing/empty query (returns empty list), and edge cases.
+- `/locations/add`: Valid adds, missing/invalid fields, duplicate/edge cases.
+- `/locations/nearby`: Valid lookups, invalid/malformed/edge-case input (returns 404 or 422 as appropriate).
 
 To run backend tests:
 ```bash
@@ -63,6 +63,7 @@ source .venv/bin/activate
 pytest tests/
 ```
 
+All backend tests pass as of v1.3.0. Test assertions are aligned with actual API response and status codes.
 
 ## Changelog Automation
 
@@ -71,16 +72,7 @@ pytest tests/
   ```bash
   ./scripts/update_changelog.sh
   ```
-  (Requires `git-cliff` to be installed. See [git-cliff releases](https://github.com/orhun/git-cliff/releases).)
-
-## Versioning Automation
-
-- The project version is stored in the `VERSION` file and in the README.
-- To bump the version:
-  - For a major release: `./scripts/bump_version.sh major`
-  - For a new feature: `./scripts/bump_version.sh minor`
-  - For a fix: `./scripts/bump_version.sh patch`
-- This will update both the `VERSION` file and the version in the README.
+  (Requires `git-cliff` to be installed. See [git-cliff releases](https://github.com/orhun/git-cliff/releases))
 
 ## Features
 
@@ -91,9 +83,23 @@ pytest tests/
 
 ---
 
+## Future Upgraded Release: Raspberry Pi Kiosk Frontend
+
+A future release will add a second frontend—a lightweight UI (possibly in Flutter) for Raspberry Pi kiosk mode:
+- Takes over the screen and displays local clock, weather, tide, fishing, and hunting data.
+- Updates every 15-30 minutes throughout the day, every other hour from midnight to 6am local time.
+- User-adjustable dark/light mode schedule.
+- Keeps screen awake from 6am to midnight (user adjustable range).
+- Always-on, glanceable display optimized for kiosk use.
+- Integrates with backend for real-time data and robust error handling.
+- Provides configuration UI for schedule and display options.
+
+---
+
 ## Changelog
 
-- **1.3.0**: Add: Automated backend tests for `/locations/search`, `/locations/add`, `/locations/nearby` (valid, invalid, edge-case inputs; pytest + httpx + pytest-asyncio).
+- **1.3.1**: (upcoming) Planned Raspberry Pi kiosk frontend: lightweight UI for always-on display, configurable schedule, and real-time updates for clock, weather, tide, fishing, and hunting data.
+- **1.3.0**: Backend: `/locations/search` now uses `query` as the parameter and returns `{"locations": [...]}`. Automated backend tests updated to match new response structure and status codes; all backend tests now pass. Also covers `/locations/add`, `/locations/nearby` (valid, invalid, edge-case inputs; pytest + httpx + pytest-asyncio).
 - **1.2.9**: Fix: Added assets/VERSION to pubspec.yaml and moved VERSION file to assets directory so app version is loaded and displayed dynamically in the app bar and MaterialApp title.
 - **1.2.8**: Bugfix: The "week at a glance" feature now appears immediately after a location is selected, without needing to refresh. This was fixed by ensuring fetchAll() is called after location selection, not just for today data.
 - **1.2.7**: Refactor: Removed all references to towns.json and stations.json. The backend now uses a default station for manual/geocoded locations.
@@ -104,4 +110,3 @@ pytest tests/
 - **1.2.0**: Switched to SQLite for locations, improved UI/UX, added location learning.
 
 ---
-

@@ -23,7 +23,20 @@
 - [ ] Cache recent location selections in local storage (e.g., using shared_preferences in Flutter), and display them for quick access.
 - [x] ~~Add automated backend tests (e.g., with pytest and httpx) for `/locations/search`, `/locations/add`, and `/locations/nearby`, covering valid, invalid, and edge-case inputs.~~ (v1.3.0)
 - [ ] Add a section to the README describing all backend endpoints, their parameters, and example requests/responses. Document new frontend features, especially location learning and selection.
-- [ ] Ensure version consistency between the VERSION file, README, and frontend display.
+- [x] ~~Ensure version consistency between the VERSION file, README, and frontend display.~~ (v1.3.0)
 - [ ] Continue adding docstrings and inline comments, especially in backend endpoint logic.
 - [ ] Update CHANGES.md and maintain changelog discipline with each release.
 
+---
+
+## Future Upgraded Release: Raspberry Pi Kiosk Frontend
+
+- [ ] Develop a lightweight UI (potentially in Flutter) for Raspberry Pi to run in kiosk mode and take over the screen.
+    - Display: local clock, weather, tide, fishing, and hunting data.
+    - Update frequency: every 15-30 minutes throughout the day; every other hour from midnight to 6am local time.
+    - User-adjustable schedule for dark/light mode.
+    - Keep screen awake from 6am to midnight (user adjustable time range).
+    - UI/UX optimized for always-on, glanceable display.
+    - Integrate with backend for real-time data.
+    - Ensure robust error handling and offline fallback for local data display.
+    - Provide configuration UI for schedule and display options.
