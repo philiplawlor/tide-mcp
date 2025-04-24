@@ -10,6 +10,42 @@ Built with:
 
 ---
 
+## MCP Servers and Tools Used
+
+This project is managed and automated using the Model Context Protocol (MCP) with the following servers and tools:
+
+### MCP Servers
+
+1. **filesystem MCP server**
+   - Handles all file operations within allowed directories (read, write, edit, list, move, search, etc.).
+2. **github MCP server**
+   - Integrates with GitHub for repository, branch, file, issue, and pull request management.
+3. **brave-search MCP server**
+   - Enables web and local business search via the Brave Search API.
+4. **sequential-thinking MCP server**
+   - Used for advanced, multi-step problem-solving and planning via chain-of-thought reasoning.
+
+### Tools in Use
+
+#### Filesystem Tools
+- Create, read, write, edit, and move files and directories
+- List directory contents and search for files
+- Get file/directory metadata
+
+#### GitHub Tools
+- Create/update/read files and directories in repositories
+- Manage branches, issues, pull requests, and comments
+- Search code, repositories, issues, and users
+
+#### Brave Search Tools
+- Web search for general queries
+- Local business search
+
+#### Sequential Thinking Tools
+- Advanced problem decomposition and reasoning
+
+---
+
 ## Getting Started
 
 ### Backend Setup (FastAPI)
@@ -73,26 +109,6 @@ All backend tests pass as of v1.3.0. Test assertions are aligned with actual API
   ./scripts/update_changelog.sh
   ```
   (Requires `git-cliff` to be installed. See [git-cliff releases](https://github.com/orhun/git-cliff/releases))
-
-## Features
-
-- Location learning: Select any town/location and it will be stored for future lookups.
-- Tide, moon, and prediction data are shown only after a location is selected.
-- SQLite database for local location storage.
-- Modern testability patterns for Flutter frontend.
-
----
-
-## Future Upgraded Release: Raspberry Pi Kiosk Frontend
-
-A future release will add a second frontend—a lightweight UI (possibly in Flutter) for Raspberry Pi kiosk mode:
-- Takes over the screen and displays local clock, weather, tide, fishing, and hunting data.
-- Updates every 15-30 minutes throughout the day, every other hour from midnight to 6am local time.
-- User-adjustable dark/light mode schedule.
-- Keeps screen awake from 6am to midnight (user adjustable range).
-- Always-on, glanceable display optimized for kiosk use.
-- Integrates with backend for real-time data and robust error handling.
-- Provides configuration UI for schedule and display options.
 
 ---
 
