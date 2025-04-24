@@ -120,8 +120,8 @@ def add_or_update_location(town, state, zip_code, lat, lon, stationId):
     conn.close()
 
 @app.get("/locations/search")
-def locations_search(q: str = Query(...), limit: int = 5):
-    results = get_locations(q, limit)
+def locations_search(query: str = Query(...), limit: int = 5):
+    results = get_locations(query, limit)
     return {"locations": results}
 
 @app.post("/locations/add")
