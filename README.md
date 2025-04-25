@@ -2,7 +2,7 @@
 
 A cross-platform app for tides, moon phases, and fishing/hunting predictions. Now supports learning any town/location selected by users.
 
-**Version:** 1.3.1
+**Version:** 1.3.2
 
 Built with:
 - **Backend:** FastAPI (Python) + SQLite (locations.db)
@@ -76,7 +76,7 @@ This project is managed and automated using the Model Context Protocol (MCP) wit
    ```bash
    cd frontend
    ```
-2. **Install Flutter dependencies:**
+2. **Install dependencies:**
    ```bash
    flutter pub get
    ```
@@ -85,35 +85,11 @@ This project is managed and automated using the Model Context Protocol (MCP) wit
    flutter run
    ```
 
-## Backend Endpoint Testing
-
-Automated tests (pytest + httpx + pytest-asyncio) cover:
-- `/locations/search`: Now uses `query` as the parameter (not `q`). Returns `{"locations": [...]}`. Tests cover valid queries, missing/empty query (returns empty list), and edge cases.
-- `/locations/add`: Valid adds, missing/invalid fields, duplicate/edge cases.
-- `/locations/nearby`: Valid lookups, invalid/malformed/edge-case input (returns 404 or 422 as appropriate).
-
-To run backend tests:
-```bash
-cd backend
-source .venv/bin/activate
-pytest tests/
-```
-
-All backend tests pass as of v1.3.0. Test assertions are aligned with actual API response and status codes.
-
-## Changelog Automation
-
-- The changelog ([CHANGES.md](CHANGES.md)) is automatically generated from commit history using [`git-cliff`](https://github.com/orhun/git-cliff).
-- To update the changelog, run:
-  ```bash
-  ./scripts/update_changelog.sh
-  ```
-  (Requires `git-cliff` to be installed. See [git-cliff releases](https://github.com/orhun/git-cliff/releases))
-
 ---
 
 ## Changelog
 
+- **1.3.2**: Maintenance: Added `.venv/` and `backend/.venv/` to `.gitignore` to ensure Python virtual environment files and folders are not tracked by git.
 - **1.3.1**: (upcoming) Planned Raspberry Pi kiosk frontend: lightweight UI for always-on display, configurable schedule, and real-time updates for clock, weather, tide, fishing, and hunting data.
 - **1.3.0**: Backend: `/locations/search` now uses `query` as the parameter and returns `{"locations": [...]}`. Automated backend tests updated to match new response structure and status codes; all backend tests now pass. Also covers `/locations/add`, `/locations/nearby` (valid, invalid, edge-case inputs; pytest + httpx + pytest-asyncio).
 - **1.2.9**: Fix: Added assets/VERSION to pubspec.yaml and moved VERSION file to assets directory so app version is loaded and displayed dynamically in the app bar and MaterialApp title.

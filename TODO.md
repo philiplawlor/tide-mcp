@@ -1,1 +1,2 @@
 - ~~Add section to README.md listing all MCP servers and tools used (1.3.1)~~
+- ~~Add `.venv/` and `backend/.venv/` to `.gitignore` (1.3.1)~~

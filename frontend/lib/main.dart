@@ -62,7 +62,7 @@ class _TideHomePageState extends State<TideHomePage> {
   String _buildAppBarTitle() {
   String locationName = selectedTown ?? _selectedStationName;
   String title = 'Local Tides';
-  if (locationName != null && locationName.isNotEmpty) {
+  if (locationName.isNotEmpty) {
     title += ' [' + locationName + ']';
   }
   title += ' - v$_version';
