@@ -1,6 +1,6 @@
 name: tide_mcp
 description: A cross-platform tide, moon phase, and fishing/hunting prediction app.
-version: 1.2.0
+version: 1.3.2
 environment:
   sdk: ">=2.17.0 <4.0.0"
 dependencies:
@@ -13,6 +13,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^3.0.0
 flutter:
   uses-material-design: true
   assets:
